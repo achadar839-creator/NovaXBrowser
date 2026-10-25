@@ -117,6 +117,31 @@ class MainActivity : AppCompatActivity() {
         updateUI()
     }
 
+
+    private fun showTabsOverview() {
+        if (tabs.isEmpty()) {
+            createNewTab("https://www.google.com")
+            return
+        }
+
+        val labels = tabs.mapIndexed { index, tab ->
+            val title = tab.title?.takeIf { it.isNotBlank() } ?: "New Tab"
+            val url = tab.url ?: ""
+            "${if (index == currentTabIndex) "✓ " else ""}${index + 1}. $title\n$url"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("NovaX Tabs (${tabs.size})")
+            .setItems(labels) { _, which ->
+                switchToTab(which)
+            }
+            .setPositiveButton("+ New Tab") { _, _ ->
+                createNewTab("https://www.google.com")
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
     private fun setupButtons() {
         findViewById<Button>(R.id.btnGo).setOnClickListener { 
             val u = etUrl.text.toString()
@@ -124,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnHome).setOnClickListener { tabs[currentTabIndex].loadUrl("https://www.google.com") }
         
-        btnTabs.setOnClickListener { createNewTab("https://www.google.com") }
+        btnTabs.setOnClickListener { showTabsOverview() }
         
         findViewById<Button>(R.id.btnPinAudio).setOnClickListener {
             pinnedMusicTab = tabs[currentTabIndex]
