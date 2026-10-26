@@ -225,10 +225,42 @@ private val fileUploadPicker = registerForActivityResult(
 
             BackgroundPlayService.ACTION_PLAY_PAUSE -> {
                 val tab = pinnedMusicTab
-                tab?.evaluateJavascript(
-                    "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused)||a.find(x=>x.readyState>0);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});if(m.paused){m.play().catch(function(){});}else{m.pause();}return JSON.stringify({playing:!m.paused,title:document.title,url:location.href});})()",
-                    null
-                )
+                if (tab == null) {
+                    val update = Intent(this, BackgroundPlayService::class.java).apply {
+                        putExtra(BackgroundPlayService.EXTRA_TITLE, "NovaX Live Audio")
+                        putExtra(BackgroundPlayService.EXTRA_PLAYING, false)
+                    }
+                    startService(update)
+                } else {
+                    tab.evaluateJavascript(
+                        "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused)||a.find(x=>x.readyState>0);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});if(m.paused){var p=m.play();if(p&&p.catch)p.catch(function(){});}else{m.pause();}return JSON.stringify({playing:!m.paused,title:document.title,url:location.href});})()"
+                    ) { raw ->
+                        try {
+                            val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
+                            val json = if (decoded is String) org.json.JSONObject(decoded)
+                                       else decoded as? org.json.JSONObject
+                            if (json != null) {
+                                val update = Intent(this, BackgroundPlayService::class.java).apply {
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_TITLE,
+                                        json.optString("title", tab.title ?: "NovaX Live Audio")
+                                    )
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_URL,
+                                        json.optString("url", tab.url.orEmpty())
+                                    )
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_PLAYING,
+                                        json.optBoolean("playing", false)
+                                    )
+                                }
+                                startService(update)
+                            }
+                        } catch (_: Exception) {
+                            // Keep the current notification if the page returns invalid media state.
+                        }
+                    }
+                }
             }
         }
     }
@@ -242,7 +274,7 @@ private val fileUploadPicker = registerForActivityResult(
                     tab.goBack()
                 } else {
                     isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                    finish()
                 }
             }
         })
