@@ -12,6 +12,7 @@ import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
@@ -154,14 +155,17 @@ private val fileUploadPicker = registerForActivityResult(
     private var pageTitle: String = "NovaX Browser"
 
     private var rewardedAd: RewardedAd? = null
-    private var completedRewards = 0
     private val rewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
     private val premiumPrefs by lazy { getSharedPreferences("novax_premium", MODE_PRIVATE) }
 
     private fun isPremiumActive(): Boolean =
-        premiumPrefs.getLong("premium_until", 0L) > System.currentTimeMillis()
+        premiumPrefs.getBoolean("premium_unlocked", false)
 
     private fun loadRewardedAd() {
+        if (isPremiumActive()) {
+            rewardedAd = null
+            return
+        }
         RewardedAd.load(this, rewardedAdUnitId, AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
@@ -174,33 +178,52 @@ private val fileUploadPicker = registerForActivityResult(
             Toast.makeText(this, "👑 Premium is already active", Toast.LENGTH_SHORT).show()
             return
         }
+
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
             Toast.makeText(this, "Ad loading—please tap again shortly", Toast.LENGTH_SHORT).show()
             return
         }
+
         rewardedAd = null
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 if (earned) {
-                    completedRewards++
-                    if (completedRewards >= 2) {
-                        premiumPrefs.edit().putLong(
-                            "premium_until", System.currentTimeMillis() + 24L * 60L * 60L * 1000L
-                        ).apply()
-                        completedRewards = 0
-                        Toast.makeText(this@MainActivity, "👑 Premium unlocked for 24 hours!", Toast.LENGTH_LONG).show()
+                    val count = premiumPrefs.getInt("completed_rewards", 0) + 1
+                    if (count >= 2) {
+                        premiumPrefs.edit()
+                            .putBoolean("premium_unlocked", true)
+                            .putInt("completed_rewards", 2)
+                            .apply()
+                        Toast.makeText(this@MainActivity,
+                            "👑 Premium permanently unlocked!", Toast.LENGTH_LONG).show()
                         updateUI()
                     } else {
-                        Toast.makeText(this@MainActivity, "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
+                        premiumPrefs.edit().putInt("completed_rewards", count).apply()
+                        Toast.makeText(this@MainActivity,
+                            "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
                     }
+                } else {
+                    Toast.makeText(this@MainActivity,
+                        "Reward not earned. Please watch the ad fully.", Toast.LENGTH_SHORT).show()
                 }
+                updateUI()
                 loadRewardedAd()
             }
+
+            override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                rewardedAd = null
+                loadRewardedAd()
+                Toast.makeText(this@MainActivity,
+                    "Ad couldn't be shown. Please try again.", Toast.LENGTH_SHORT).show()
+            }
         }
-        ad.show(this) { earned = true }
+
+        ad.show(this) {
+            earned = true
+        }
     }
 
 
@@ -286,7 +309,11 @@ private val fileUploadPicker = registerForActivityResult(
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 410)
         }
         loadRewardedAd()
-        findViewById<AdView>(R.id.adView).loadAd(AdRequest.Builder().build())
+        val bannerAd = findViewById<AdView>(R.id.adView)
+        bannerAd.visibility = if (isPremiumActive()) View.GONE else View.VISIBLE
+        if (!isPremiumActive()) {
+            bannerAd.loadAd(AdRequest.Builder().build())
+        }
 
         webContainer = findViewById(R.id.webContainer)
         etUrl = findViewById(R.id.etUrl)
@@ -360,6 +387,8 @@ private val fileUploadPicker = registerForActivityResult(
             btnAdminPanel.visibility = View.GONE
         }
         btnTabs.text = "[ ${tabs.size} ]"
+        findViewById<View>(R.id.adView).visibility =
+            if (isPremiumActive() || !browserBarsVisible) View.GONE else View.VISIBLE
         miniPlayerBar.visibility = if (pinnedMusicTab != null) View.VISIBLE else View.GONE
     }
 
