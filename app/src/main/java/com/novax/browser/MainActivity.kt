@@ -9,11 +9,19 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
 import android.widget.*
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
+import android.content.pm.PackageManager
+import android.Manifest
+import android.os.Build
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
 import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
@@ -145,14 +153,93 @@ private val fileUploadPicker = registerForActivityResult(
     private var trackingProtectionEnabled = true
     private var pageTitle: String = "NovaX Browser"
 
+    private var rewardedAd: RewardedAd? = null
+    private var completedRewards = 0
+    private val rewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+    private val premiumPrefs by lazy { getSharedPreferences("novax_premium", MODE_PRIVATE) }
+
+    private fun isPremiumActive(): Boolean =
+        premiumPrefs.getLong("premium_until", 0L) > System.currentTimeMillis()
+
+    private fun loadRewardedAd() {
+        RewardedAd.load(this, rewardedAdUnitId, AdRequest.Builder().build(),
+            object : RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
+                override fun onAdFailedToLoad(error: LoadAdError) { rewardedAd = null }
+            })
+    }
+
+    private fun showRewardedUnlock() {
+        if (isPremiumActive()) {
+            Toast.makeText(this, "👑 Premium is already active", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val ad = rewardedAd
+        if (ad == null) {
+            loadRewardedAd()
+            Toast.makeText(this, "Ad loading—please tap again shortly", Toast.LENGTH_SHORT).show()
+            return
+        }
+        rewardedAd = null
+        var earned = false
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                if (earned) {
+                    completedRewards++
+                    if (completedRewards >= 2) {
+                        premiumPrefs.edit().putLong(
+                            "premium_until", System.currentTimeMillis() + 24L * 60L * 60L * 1000L
+                        ).apply()
+                        completedRewards = 0
+                        Toast.makeText(this@MainActivity, "👑 Premium unlocked for 24 hours!", Toast.LENGTH_LONG).show()
+                        updateUI()
+                    } else {
+                        Toast.makeText(this@MainActivity, "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
+                    }
+                }
+                loadRewardedAd()
+            }
+        }
+        ad.show(this) { earned = true }
+    }
+
+
     private val adultDomains = listOf("porn.com", "pornhub.com", "xvideos.com", "xnxx.com")
     private val defaultVipUrl = "https://www.youtube.com/@mrphengmaxx?sub_confirmation=1"
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == BackgroundPlayService.ACTION_PLAY_PAUSE) {
+            val tab = pinnedMusicTab
+            tab?.evaluateJavascript(
+                "(function(){var v=document.querySelector('video,audio');if(v){if(v.paused){v.play()}else{v.pause()}}})()",
+                null
+            )
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val tab = tabs.getOrNull(currentTabIndex)
+                if (tab != null && tab.canGoBack()) {
+                    tab.goBack()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
         setContentView(R.layout.activity_main)
 
         MobileAds.initialize(this) {}
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 410)
+        }
+        loadRewardedAd()
         findViewById<AdView>(R.id.adView).loadAd(AdRequest.Builder().build())
 
         webContainer = findViewById(R.id.webContainer)
@@ -183,11 +270,11 @@ private val fileUploadPicker = registerForActivityResult(
     private fun updateUI() {
         if (isAdmin()) {
             btnLogin.text = "👑 Admin"
-            btnVipAd.text = "👑 Gold Active"
+            btnVipAd.text = "👑 Premium Active"
             btnAdminPanel.visibility = View.VISIBLE
         } else {
             btnLogin.text = "👤 Login"
-            btnVipAd.text = "🎬 VIP Unlock"
+            btnVipAd.text = if (isPremiumActive()) "👑 Premium Active" else "🎬 Premium (2 Ads)"
             btnAdminPanel.visibility = View.GONE
         }
         btnTabs.text = "[ ${tabs.size} ]"
@@ -1271,9 +1358,10 @@ override fun onDestroy() {
         }
         
         btnVipAd.setOnClickListener {
-            if (!isAdmin()) {
-                val link = getSharedPreferences("prefs", 0).getString("vip", defaultVipUrl)
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+            if (isAdmin()) {
+                Toast.makeText(this, "👑 Admin Premium Active", Toast.LENGTH_SHORT).show()
+            } else {
+                showRewardedUnlock()
             }
         }
     }
