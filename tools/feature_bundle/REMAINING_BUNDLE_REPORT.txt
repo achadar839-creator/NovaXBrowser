@@ -1,0 +1,10 @@
+NovaX Browser remaining feature bundle
+MODE: REVIEW COPY ONLY — original source untouched
+
+READY: Desktop preference field located
+READY: VIP URL validation
+REVIEW REQUIRED: Admin access currently relies on a locally stored email; use trusted server/provider authentication for real security.
+FOUND: Desktop toggle; preference persistence needs a targeted edit and build validation.
+
+Output: tools/feature_bundle/MainActivity.final-review.kt
+No build, activation, or GitHub push performed.

@@ -1,0 +1,30 @@
+NovaX Browser - Feature Bundle Inventory
+Mode: PREPARE ONLY
+No MainActivity.kt or layout XML changes were made by this script.
+
+Detected feature markers:
+multi_tab: FOUND
+incognito: FOUND
+external_intent: FOUND
+http_warning: FOUND
+safe_search: FOUND
+tracker_blocking: FOUND
+adult_blocking: FOUND
+desktop_mode: FOUND
+audio_pin: FOUND
+vip_admin: FOUND
+bookmarks_history: FOUND
+downloads: FOUND
+qr_scanner: FOUND
+reading_mode: FOUND
+find_in_page: FOUND
+read_aloud: FOUND
+wallpaper: FOUND
+session_restore: FOUND
+
+Important limitations:
+- Marker detection is not a functional test.
+- Android compilation has not been run.
+- Incognito may still share WebView cookies/storage with normal tabs.
+- Email-only Admin login is not secure authentication.
+- FeatureRegistry flags are not connected to app controls.

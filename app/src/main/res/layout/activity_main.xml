@@ -1,21 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:ads="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+<LinearLayout
+    android:id="@+id/browserRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#0D1117">
 
-    <Button
-        android:id="@+id/btnUiToggle"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:text="☰"
-        android:contentDescription="Toggle browser bars"
-        android:layout_gravity="end"
-        android:elevation="12dp"
-        android:backgroundTint="#1F6FEB"
-        android:textColor="#FFFFFF" />
+    
 
     <LinearLayout
         android:id="@+id/topBar"
@@ -321,4 +315,16 @@
             android:backgroundTint="#1F6FEB"
             android:textColor="#FFFFFF" />
     </LinearLayout>
+
 </LinearLayout>
+<Button
+        android:id="@+id/btnUiToggle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:text="☰"
+        android:contentDescription="Toggle browser bars"
+        android:layout_gravity="end|center_vertical"
+        android:elevation="16dp"
+        android:backgroundTint="#1F6FEB"
+        android:textColor="#FFFFFF" />
+</FrameLayout>

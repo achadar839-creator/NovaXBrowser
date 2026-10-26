@@ -1,0 +1,23 @@
+NovaX Browser - Guarded Patch Plan
+MODE: REVIEW ONLY — NO APP SOURCE CHANGES
+
+[CHECK] Intent fallback uses incorrect loadUrl call
+[CHECK] Incognito cleanup globally clears cookies
+[CHECK] Incognito cleanup globally clears web storage
+[CHECK] Adult filtering uses broad URL matching
+[CHECK] HTTP one-time bypass variable exists
+[CHECK] Desktop preference storage needs review
+[CHECK] VIP URL handling needs review
+[CHECK] Mini-player lifecycle needs review
+
+Planned corrections:
+1. Correct external intent fallback navigation.
+2. Stop incognito-tab closure from clearing all normal-tab cookies/storage.
+3. Match blocked adult domains by hostname boundaries, not arbitrary URL text.
+4. Correctly consume the one-time HTTP confirmation bypass.
+5. Persist desktop-mode preference safely.
+6. Guard mini-player tab lifecycle.
+7. Validate VIP destinations and document that email-only login is not secure.
+8. Review XML click handlers and Android build configuration.
+
+No feature has been activated or modified by this plan.

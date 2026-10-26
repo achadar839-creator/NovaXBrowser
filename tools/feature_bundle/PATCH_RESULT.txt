@@ -1,0 +1,12 @@
+NovaX Browser combined patch preparation
+Mode: REVIEW COPY ONLY — original MainActivity.kt not overwritten
+Prepared: 2026-10-26T13:40:39
+
+READY: External intent fallback
+READY: Incognito global-data cleanup safety
+READY: Adult domain hostname matching
+READY: HTTP one-time bypass check
+READY: HTTP approval action
+
+Review copy: tools/feature_bundle/MainActivity.review.kt
+This script does not activate staged registry flags, build an APK, or push to GitHub.

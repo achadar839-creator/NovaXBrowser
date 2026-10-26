@@ -1,0 +1,6 @@
+Applied reviewed MainActivity changes to original source.
+Backup: tools/feature_bundle/backups/MainActivity.kt.20261026_134347.bak
+CHECK: app_name string resource not found; label not guessed
+NOT yet verified by Android compilation or runtime tests.
+Desktop preference persistence, mini-player lifecycle, and VIP URL/authentication still need functional verification.
+No APK built; no GitHub push performed.

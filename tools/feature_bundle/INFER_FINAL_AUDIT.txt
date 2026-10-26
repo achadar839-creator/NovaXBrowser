@@ -1,0 +1,17 @@
+Infer Browser — Final Audit
+App label changed to Infer Browser.
+Manifest backup: tools/feature_bundle/backups/AndroidManifest.xml.20261026_134649.bak
+MainActivity Kotlin syntax (basic balance): (280, 280)
+Manifest XML: ('XML parse', 'pending Gradle build')
+App label: ('Infer Browser', 'app/src/main/AndroidManifest.xml')
+Gradle wrapper: ('gradlew present', 'not run yet')
+
+Functional items still needing runtime/build confirmation:
+- HTTP one-time bypass
+- Incognito profile isolation (WebView shared profile limitation)
+- Desktop mode persistence
+- Mini-player lifecycle
+- VIP URL validation and secure admin authentication
+- Full Android compile and XML/resource validation
+
+No APK upload or GitHub push performed.

@@ -302,6 +302,7 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
+        findViewById<android.widget.TextView>(R.id.tvBrand).text = getSharedPreferences("novax_preferences", MODE_PRIVATE).getString("browser_title", "⚡ NovaX 4K Browser")
 
         MobileAds.initialize(this) {}
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -345,35 +346,71 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
     private var browserBarsVisible = false
+    private var fullDisplayMode = false
+
+    private fun applyFullDisplayMode() {
+        if (fullDisplayMode) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(false)
+                window.insetsController?.let { c ->
+                    c.hide(android.view.WindowInsets.Type.statusBars() or
+                        android.view.WindowInsets.Type.navigationBars())
+                    c.systemBarsBehavior =
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.show(
+                    android.view.WindowInsets.Type.statusBars() or
+                    android.view.WindowInsets.Type.navigationBars())
+                window.setDecorFitsSystemWindows(true)
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+            }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && fullDisplayMode) applyFullDisplayMode()
+    }
 
     private fun toggleBrowserBars() {
         browserBarsVisible = !browserBarsVisible
+        fullDisplayMode = !browserBarsVisible
         val visibility = if (browserBarsVisible) View.VISIBLE else View.GONE
 
         findViewById<View>(R.id.topBar).visibility = visibility
         findViewById<View>(R.id.miniPlayerBar).visibility =
             if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.progressBar).visibility =
-            if (browserBarsVisible) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.adView).visibility = visibility
+        findViewById<View>(R.id.progressBar).visibility = visibility
+        findViewById<View>(R.id.adView).visibility =
+            if (browserBarsVisible && !isPremiumActive()) View.VISIBLE else View.GONE
 
-        val root = findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0)
-            as? android.view.ViewGroup
-        root?.let {
-            // Hide the existing tools row and bottom navigation row.
-            val toolsRow = (0 until it.childCount)
-                .map { index -> it.getChildAt(index) }
-                .firstOrNull { child ->
-                    child is android.widget.HorizontalScrollView
-                }
-            toolsRow?.visibility = visibility
-
-            val bottomRow = it.findViewById<View>(R.id.btnBack)?.parent as? View
-            bottomRow?.visibility = visibility
+        val root = findViewById<android.view.ViewGroup>(R.id.browserRoot)
+        root?.let { container ->
+            val tools = (0 until container.childCount)
+                .map { container.getChildAt(it) }
+                .firstOrNull { it is android.widget.HorizontalScrollView }
+            tools?.visibility = visibility
+            (container.findViewById<View>(R.id.btnBack)?.parent as? View)
+                ?.visibility = visibility
         }
 
         findViewById<Button>(R.id.btnUiToggle).text =
             if (browserBarsVisible) "×" else "☰"
+        applyFullDisplayMode()
     }
 
     private fun updateUI() {
@@ -389,7 +426,7 @@ private val fileUploadPicker = registerForActivityResult(
         btnTabs.text = "[ ${tabs.size} ]"
         findViewById<View>(R.id.adView).visibility =
             if (isPremiumActive() || !browserBarsVisible) View.GONE else View.VISIBLE
-        miniPlayerBar.visibility = if (pinnedMusicTab != null) View.VISIBLE else View.GONE
+        miniPlayerBar.visibility = if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
     }
 
     private fun createNewTab(url: String) {
@@ -1483,10 +1520,7 @@ override fun onDestroy() {
         }
 
         btnAdminPanel.setOnClickListener {
-            val input = EditText(this).apply { setText(getSharedPreferences("prefs", 0).getString("vip", defaultVipUrl)) }
-            AlertDialog.Builder(this).setTitle("⚙️ Admin: Set VIP Link").setView(input)
-                .setPositiveButton("Save") { _, _ -> getSharedPreferences("prefs", 0).edit().putString("vip", input.text.toString()).apply() }
-                .show()
+            showAdminCustomization()
         }
 
         btnLogin.setOnClickListener {
@@ -1506,4 +1540,27 @@ override fun onDestroy() {
             }
         }
     }
+
+
+    private fun showAdminCustomization() {
+        val options = arrayOf("Browser Title", "Search Bar Hint", "Homepage URL", "VIP Link")
+        AlertDialog.Builder(this).setTitle("⚙️ Admin: Home Customization").setItems(options) { _, which -> editAdminSetting(which, options[which]) }.setNegativeButton("Close", null).show()
+    }
+
+    private fun editAdminSetting(which: Int, title: String) {
+        val keys = arrayOf("browser_title", "search_hint", "custom_homepage", "vip")
+        val defaults = arrayOf("⚡ NovaX 4K Browser", "Search or enter address", "https://www.google.com", defaultVipUrl)
+        val prefs = if (which == 3) getSharedPreferences("prefs", 0) else getSharedPreferences("novax_preferences", MODE_PRIVATE)
+        val input = EditText(this).apply { setText(prefs.getString(keys[which], defaults[which])) }
+        AlertDialog.Builder(this).setTitle(title).setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                var value = input.text.toString().trim()
+                if (which == 2 && value.isNotBlank() && !value.startsWith("http")) value = "https://$value"
+                prefs.edit().putString(keys[which], value).apply()
+                if (which == 0) findViewById<android.widget.TextView>(R.id.tvBrand).text = value
+                if (which == 1) etUrl.hint = value
+            }.show()
+    }
+
 }
