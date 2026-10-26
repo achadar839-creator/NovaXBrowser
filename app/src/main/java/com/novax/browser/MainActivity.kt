@@ -1034,7 +1034,7 @@ private fun loadSearchEnginePreference() {
     private fun findTextInPage() {
         val input = EditText(this).apply {
             hint = "वेबसाइट में शब्द खोजें"
-            singleLine = true
+            maxLines = 1
         }
         AlertDialog.Builder(this)
             .setTitle("Find in Page")
