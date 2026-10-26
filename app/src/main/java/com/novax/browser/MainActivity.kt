@@ -1514,6 +1514,16 @@ override fun onDestroy() {
         btnTabs.setOnClickListener { showTabsOverview() }
         
         findViewById<Button>(R.id.btnPinAudio).setOnClickListener {
+            if (!isPremiumActive() && !isAdmin()) {
+                AlertDialog.Builder(this)
+                    .setTitle("👑 Premium Feature")
+                    .setMessage("Pin Audio is a Premium feature. Watch 2 rewarded ads completely to unlock Premium.")
+                    .setPositiveButton("Watch Ads") { _, _ -> showRewardedUnlock() }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return@setOnClickListener
+            }
+
             val tab = tabs.getOrNull(currentTabIndex)
             if (tab == null) {
                 Toast.makeText(this, "पहले कोई टैब खोलें", Toast.LENGTH_SHORT).show()
