@@ -494,6 +494,15 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
+                // novax_transparent_home_wallpaper
+                if (view != null && !url.isNullOrBlank() &&
+                    (url.contains("google.com") || url == "about:blank")) {
+                    view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    view.evaluateJavascript(
+                        "(function(){document.documentElement.style.setProperty('background','transparent','important');if(document.body)document.body.style.setProperty('background','transparent','important');})();",
+                        null
+                    )
+                }
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
 
                 if (!url.isNullOrBlank() &&
