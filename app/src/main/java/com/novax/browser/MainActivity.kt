@@ -210,12 +210,26 @@ private val fileUploadPicker = registerForActivityResult(
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == BackgroundPlayService.ACTION_PLAY_PAUSE) {
-            val tab = pinnedMusicTab
-            tab?.evaluateJavascript(
-                "(function(){var v=document.querySelector('video,audio');if(v){if(v.paused){v.play()}else{v.pause()}}})()",
-                null
-            )
+
+        when (intent.action) {
+            BackgroundPlayService.ACTION_OPEN_PINNED -> {
+                val pinned = pinnedMusicTab
+                val index = tabs.indexOf(pinned)
+                if (pinned != null && index >= 0) {
+                    switchToTab(index)
+                    pinned.requestFocus()
+                } else {
+                    Toast.makeText(this, "Pinned media tab is no longer available", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            BackgroundPlayService.ACTION_PLAY_PAUSE -> {
+                val tab = pinnedMusicTab
+                tab?.evaluateJavascript(
+                    "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused)||a.find(x=>x.readyState>0);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});if(m.paused){m.play().catch(function(){});}else{m.pause();}return JSON.stringify({playing:!m.paused,title:document.title,url:location.href});})()",
+                    null
+                )
+            }
         }
     }
 
@@ -1294,11 +1308,31 @@ override fun onDestroy() {
         btnTabs.setOnClickListener { showTabsOverview() }
         
         findViewById<Button>(R.id.btnPinAudio).setOnClickListener {
-            pinnedMusicTab = tabs[currentTabIndex]
-            pinnedMusicTab?.allowBackgroundPlay = true
-            startService(Intent(this, BackgroundPlayService::class.java))
-            createNewTab("https://www.google.com")
-            Toast.makeText(this, "🎵 Audio Pinned & Background Play ON", Toast.LENGTH_SHORT).show()
+            val tab = tabs.getOrNull(currentTabIndex)
+            if (tab == null) {
+                Toast.makeText(this, "पहले कोई टैब खोलें", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            pinnedMusicTab = tab
+            tab.allowBackgroundPlay = true
+
+            val title = tab.title?.takeIf { it.isNotBlank() } ?: "NovaX Live Audio"
+            val url = tab.url.orEmpty()
+            val serviceIntent = Intent(this, BackgroundPlayService::class.java).apply {
+                putExtra(BackgroundPlayService.EXTRA_TITLE, title)
+                putExtra(BackgroundPlayService.EXTRA_URL, url)
+                putExtra(BackgroundPlayService.EXTRA_PLAYING, true)
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+
+            updateUI()
+            Toast.makeText(this, "🎵 Audio pinned: $title", Toast.LENGTH_SHORT).show()
         }
         
         findViewById<Button>(R.id.btnMiniPlayPause).setOnClickListener {
