@@ -129,6 +129,106 @@
                 android:backgroundTint="#8957E5"
                 android:textColor="#FFFFFF" />
             <Button
+                android:id="@+id/btnBookmarks"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="🔖 Bookmarks"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="#1F6FEB"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btnHistory"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="🕘 History"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="#8957E5"
+                android:textColor="#FFFFFF" />
+            <Button
+                android:id="@+id/btnQuickLinks"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="🌐 Links"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+            <Button
+                android:id="@+id/btnClearData"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="🗑 Clear"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+            <Button
+                android:id="@+id/btnDownloads"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="📥 Downloads"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+            <Button
+                android:id="@+id/btnSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="⚙ Settings"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+        <Button
+            android:id="@+id/btnDesktopMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Desktop Mode" />
+        <Button
+            android:id="@+id/btnWebsiteTools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Website Tools" />
+        <Button
+            android:id="@+id/btnSharePage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Share Page" />
+        <Button
+            android:id="@+id/btnQrScanner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="QR Scanner" />
+        <Button
+            android:id="@+id/btnRestoreSession"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Restore Session" />
+        <Button
+            android:id="@+id/btnSpeakPage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Read Aloud" />
+        <Button
+            android:id="@+id/btnFindPage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Find in Page" />
+        <Button
+            android:id="@+id/btnReadingMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reading Mode" />
+        <Button
+            android:id="@+id/btnSearchEngine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Search Engine" />
+
+
+            <Button
+                android:id="@+id/btnIncognito"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="🕵 Private"
+                android:textSize="11sp"
+                android:layout_marginEnd="6dp" />
+            <Button
                 android:id="@+id/btnPinAudio"
                 android:layout_width="wrap_content"
                 android:layout_height="38dp"
@@ -146,6 +246,23 @@
         android:background="#0D1117"
         android:padding="6dp"
         android:gravity="center_vertical">
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:text="⬅"
+            android:contentDescription="Back"
+            android:backgroundTint="#21262D"
+            android:textColor="#FFFFFF" />
+        <Button
+            android:id="@+id/btnForward"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="4dp"
+            android:text="➡"
+            android:contentDescription="Forward"
+            android:backgroundTint="#21262D"
+            android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnHome"
             android:layout_width="40dp"
@@ -168,6 +285,15 @@
             android:singleLine="true"
             android:inputType="textUri" />
         <Button
+                android:id="@+id/btnRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:text="⟳"
+                android:textSize="18sp"
+                android:layout_marginEnd="4dp"
+                android:backgroundTint="#26354D"
+                android:textColor="#FFFFFF" />
+            <Button
             android:id="@+id/btnGo"
             android:layout_width="48dp"
             android:layout_height="42dp"
