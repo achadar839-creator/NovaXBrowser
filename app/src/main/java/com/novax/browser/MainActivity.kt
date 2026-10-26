@@ -303,6 +303,10 @@ private val fileUploadPicker = registerForActivityResult(
 
         createNewTab("https://www.google.com")
         setupButtons()
+        findViewById<Button>(R.id.btnUiToggle).setOnClickListener {
+            toggleBrowserBars()
+        }
+        toggleBrowserBars()
         applySavedTheme()
         restoreSavedWallpaper()
         updateUI()
@@ -311,6 +315,38 @@ private val fileUploadPicker = registerForActivityResult(
     private fun isAdmin(): Boolean {
         val email = getSharedPreferences("prefs", Context.MODE_PRIVATE).getString("email", "") ?: ""
         return email.equals("mutantsuperheros@gmail.com", true) || email.equals("achadar839@gmail.com", true)
+    }
+
+    private var browserBarsVisible = false
+
+    private fun toggleBrowserBars() {
+        browserBarsVisible = !browserBarsVisible
+        val visibility = if (browserBarsVisible) View.VISIBLE else View.GONE
+
+        findViewById<View>(R.id.topBar).visibility = visibility
+        findViewById<View>(R.id.miniPlayerBar).visibility =
+            if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.progressBar).visibility =
+            if (browserBarsVisible) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.adView).visibility = visibility
+
+        val root = findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0)
+            as? android.view.ViewGroup
+        root?.let {
+            // Hide the existing tools row and bottom navigation row.
+            val toolsRow = (0 until it.childCount)
+                .map { index -> it.getChildAt(index) }
+                .firstOrNull { child ->
+                    child is android.widget.HorizontalScrollView
+                }
+            toolsRow?.visibility = visibility
+
+            val bottomRow = it.findViewById<View>(R.id.btnBack)?.parent as? View
+            bottomRow?.visibility = visibility
+        }
+
+        findViewById<Button>(R.id.btnUiToggle).text =
+            if (browserBarsVisible) "×" else "☰"
     }
 
     private fun updateUI() {
@@ -331,6 +367,7 @@ private val fileUploadPicker = registerForActivityResult(
         val wv = KeepAliveWebView(this)
         wv.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         wv.settings.javaScriptEnabled = true
+        wv.settings.mediaPlaybackRequiresUserGesture = false
         wv.settings.domStorageEnabled = true
         wv.settings.allowFileAccess = false
         wv.settings.allowContentAccess = true

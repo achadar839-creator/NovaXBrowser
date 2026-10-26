@@ -6,6 +6,17 @@
     android:orientation="vertical"
     android:background="#0D1117">
 
+    <Button
+        android:id="@+id/btnUiToggle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:text="☰"
+        android:contentDescription="Toggle browser bars"
+        android:layout_gravity="end"
+        android:elevation="12dp"
+        android:backgroundTint="#1F6FEB"
+        android:textColor="#FFFFFF" />
+
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
