@@ -62,6 +62,35 @@ class MainActivity : AppCompatActivity() {
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
+    private var pendingMicPermissionRequest: PermissionRequest? = null
+
+    private val micPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val request = pendingMicPermissionRequest
+        pendingMicPermissionRequest = null
+
+        if (granted && request != null) {
+            val audioResources = request.resources.filter {
+                it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+            }.toTypedArray()
+
+            if (audioResources.isNotEmpty()) {
+                request.grant(audioResources)
+            } else {
+                request.deny()
+            }
+        } else {
+            request?.deny()
+            Toast.makeText(
+                this,
+                "Microphone permission is required for voice input",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+
     private val qrPermissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -443,10 +472,43 @@ private val fileUploadPicker = registerForActivityResult(
 
         wv.webChromeClient = object : WebChromeClient() {
             // novax_web_permission_guard
-                    override fun onPermissionRequest(request: PermissionRequest?) {
-                        // Camera/microphone access is denied until explicit in-app permission approval is implemented.
-                        request?.deny()
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                if (request == null) return
+
+                runOnUiThread {
+                    val audioResources = request.resources.filter {
+                        it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    }.toTypedArray()
+
+                    if (audioResources.isEmpty()) {
+                        request.deny()
+                        return@runOnUiThread
                     }
+
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Microphone Permission")
+                        .setMessage(
+                            "Website ${request.origin} wants to use your microphone. Allow audio access?"
+                        )
+                        .setNegativeButton("Deny") { _, _ ->
+                            request.deny()
+                        }
+                        .setPositiveButton("Allow") { _, _ ->
+                            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                request.grant(audioResources)
+                            } else {
+                                pendingMicPermissionRequest = request
+                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                        .setOnCancelListener {
+                            request.deny()
+                        }
+                        .show()
+                }
+            }
 
                     override fun onShowFileChooser(
                 webView: WebView?,
