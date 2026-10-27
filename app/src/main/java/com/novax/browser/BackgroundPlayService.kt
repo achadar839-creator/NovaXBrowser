@@ -25,7 +25,7 @@ class BackgroundPlayService : Service() {
         const val ACTION_CLOSE = "com.novax.browser.CLOSE_AUDIO"
         const val ACTION_OPEN_PINNED = "com.novax.browser.OPEN_PINNED"
 
-        const val CHANNEL_ID = "NovaXBg"
+        const val CHANNEL_ID = "NovaXBgHidden"
         const val NOTIFICATION_ID = 1
         const val EXTRA_TITLE = "novax_media_title"
         const val EXTRA_URL = "novax_media_url"
@@ -41,7 +41,7 @@ class BackgroundPlayService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Infer Browser Audio",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_NONE
             ).apply {
                 description = "Infer Browser media controls"
                 setShowBadge(false)
@@ -179,26 +179,6 @@ class BackgroundPlayService : Service() {
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setOngoing(true)
-            .addAction(
-                android.R.drawable.ic_media_previous,
-                "Previous",
-                actionPending(ACTION_PREVIOUS, 103)
-            )
-            .addAction(
-                playPauseIcon,
-                if (playing) "Pause" else "Play",
-                actionPending(ACTION_PLAY_PAUSE, 101)
-            )
-            .addAction(
-                android.R.drawable.ic_media_next,
-                "Next",
-                actionPending(ACTION_NEXT, 104)
-            )
-            .setStyle(
-                MediaStyle()
-                    .setMediaSession(mediaSession?.sessionToken)
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
