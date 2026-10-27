@@ -591,32 +591,44 @@ private val fileUploadPicker = registerForActivityResult(
 
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             try {
-                val request = android.app.DownloadManager.Request(Uri.parse(url))
+                val downloadUri = Uri.parse(url)
+                if (downloadUri.scheme !in listOf("http", "https")) {
+                    Toast.makeText(this, "यह लिंक सीधे डाउनलोड नहीं हो सकता", Toast.LENGTH_LONG).show()
+                    return@setDownloadListener
+                }
+
                 val fileName = android.webkit.URLUtil.guessFileName(
                     url, contentDisposition, mimeType
-                )
+                ).replace(Regex("""[/\\:*?"<>|]"""), "_")
+                    .take(180).ifBlank { "NovaX_download" }
+
+                val request = android.app.DownloadManager.Request(downloadUri)
                 request.setTitle(fileName)
                 request.setDescription("NovaX Browser डाउनलोड")
+                request.setMimeType(mimeType)
+
                 val cookies = CookieManager.getInstance().getCookie(url)
-                if (!cookies.isNullOrBlank()) {
-                    request.addRequestHeader("Cookie", cookies)
+                if (!cookies.isNullOrBlank()) request.addRequestHeader("Cookie", cookies)
+                if (userAgent.isNotBlank()) request.addRequestHeader("User-Agent", userAgent)
+                val pageUrl = wv.url
+                if (!pageUrl.isNullOrBlank() && pageUrl.startsWith("http")) {
+                    request.addRequestHeader("Referer", pageUrl)
                 }
-                request.addRequestHeader("User-Agent", userAgent)
-                request.addRequestHeader("Referer", url)
+
+                request.setAllowedOverMetered(true)
+                request.setAllowedOverRoaming(true)
                 request.setNotificationVisibility(
                     android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                 )
                 request.setDestinationInExternalPublicDir(
                     android.os.Environment.DIRECTORY_DOWNLOADS, fileName
                 )
-                if (url.startsWith("https://", true)) {
-                    request.addRequestHeader("User-Agent", userAgent)
-                }
+
                 val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                manager.enqueue(request)
-                Toast.makeText(this, "डाउनलोड शुरू हुआ: $fileName", Toast.LENGTH_SHORT).show()
+                val downloadId = manager.enqueue(request)
+                Toast.makeText(this, "डाउनलोड शुरू: $fileName (ID $downloadId)", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "डाउनलोड शुरू नहीं हुआ", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "डाउनलोड त्रुटि: ${e.message ?: "अज्ञात समस्या"}", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -1751,11 +1763,32 @@ override fun onDestroy() {
                 Toast.makeText(this, "पहले Pin Audio दबाएँ", Toast.LENGTH_SHORT).show()
             } else {
                 musicTab.evaluateJavascript(
-                    "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;});if(m){m.pause();return 'paused';}m=a.find(function(x){return x.readyState>0&&!x.ended;})||a.find(function(x){return !x.ended;});if(m){var p=m.play();if(p&&p.catch)p.catch(function(){});return 'playing';}return 'no-media';})()",
-                    null
-                )
-                Toast.makeText(this, "Play/Pause अनुरोध भेजा गया", Toast.LENGTH_SHORT).show()
+                    "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(!m)return 'no-media';if(m.paused){return m.play().then(function(){return 'playing';}).catch(function(){return 'blocked';});}m.pause();return 'paused';})()"
+                ) { result ->
+                    val msg = when {
+                        result == null -> "मीडिया का जवाब नहीं मिला"
+                        result.contains("playing") -> "▶️ चल रहा है"
+                        result.contains("paused") -> "⏸️ रोक दिया"
+                        result.contains("blocked") -> "वेबसाइट ने प्ले रोक दिया"
+                        else -> "पहले वेबसाइट पर मीडिया चलाएँ"
+                    }
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                }
             }
+        }
+
+        findViewById<Button>(R.id.btnMiniPrevious).setOnClickListener {
+            pinnedMusicTab?.evaluateJavascript(
+                "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(m)m.currentTime=Math.max(0,m.currentTime-10);return 'ok';})()",
+                null
+            )
+        }
+
+        findViewById<Button>(R.id.btnMiniNext).setOnClickListener {
+            pinnedMusicTab?.evaluateJavascript(
+                "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(m)m.currentTime=Math.min(Number.isFinite(m.duration)?m.duration:m.currentTime+10,m.currentTime+10);return 'ok';})()",
+                null
+            )
         }
 
         findViewById<Button>(R.id.btnMiniClose).setOnClickListener {

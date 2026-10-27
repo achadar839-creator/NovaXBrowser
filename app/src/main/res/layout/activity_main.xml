@@ -75,6 +75,21 @@
             android:singleLine="true"
             android:textStyle="bold" />
         <Button
+            android:id="@+id/btnMiniPrevious"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:text="⏪"
+            android:backgroundTint="#0D1117"
+            android:textColor="#FFFFFF" />
+        <Button
+            android:id="@+id/btnMiniNext"
+            android:layout_width="36dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="2dp"
+            android:text="⏩"
+            android:backgroundTint="#0D1117"
+            android:textColor="#FFFFFF" />
+        <Button
             android:id="@+id/btnMiniPlayPause"
             android:layout_width="68dp"
             android:layout_height="32dp"
