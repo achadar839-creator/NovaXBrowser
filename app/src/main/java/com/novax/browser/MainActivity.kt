@@ -287,24 +287,16 @@ private val fileUploadPicker = registerForActivityResult(
                 if (tab != null) {
                     val js = if (intent.action == BackgroundPlayService.ACTION_NEXT) {
                         """(function(){
-                            var b = document.querySelector(
-                                '.ytp-next-button, button[aria-label="Next"], button[aria-label="Next track"], button[title="Next"]'
-                            );
-                            if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
-                                b.click();
-                                return 'clicked';
-                            }
+                            var s = ['.ytp-next-button', '.ytm-custom-control[aria-label*="Next"]', '.ytm-custom-control[aria-label*="अगला"]', 'button[aria-label*="Next"]', 'button[title*="Next"]', 'a.ytm-autonav-bar-link', '[class*="next-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime += 10; return 'skipped'; }
                             return 'unavailable';
                         })()"""
                     } else {
                         """(function(){
-                            var b = document.querySelector(
-                                '.ytp-prev-button, button[aria-label="Previous"], button[aria-label="Previous track"], button[title="Previous"]'
-                            );
-                            if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
-                                b.click();
-                                return 'clicked';
-                            }
+                            var s = ['.ytp-prev-button', '.ytm-custom-control[aria-label*="Previous"]', '.ytm-custom-control[aria-label*="पिछला"]', 'button[aria-label*="Previous"]', 'button[title*="Previous"]', '[class*="prev-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime -= 10; return 'skipped'; }
                             return 'unavailable';
                         })()"""
                     }
