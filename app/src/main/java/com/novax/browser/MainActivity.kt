@@ -830,6 +830,9 @@ private val fileUploadPicker = registerForActivityResult(
                     )
                 }
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
+                if (isPremiumActive() && url?.contains("youtube.com") == true) {
+                    view?.evaluateJavascript("setInterval(function(){ var s = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern'); if(s) { s.click(); } var v = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video'); if(v && document.querySelector('.ytp-ad-player-overlay')) { v.currentTime = v.duration; } }, 500);", null)
+                }
 
                 if (!url.isNullOrBlank() &&
                     (url.startsWith("https://") || url.startsWith("http://")) &&
@@ -1868,7 +1871,28 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnDesktopMode).setOnClickListener { toggleDesktopMode() }
         findViewById<Button>(R.id.btnQuickLinks).setOnClickListener { showQuickLinks() }
         findViewById<Button>(R.id.btnClearData).setOnClickListener { clearBrowserData() }
-        findViewById<Button>(R.id.btnDownloads).setOnClickListener { openDownloadsFolder() }
+        findViewById<Button>(R.id.btnDownloads).setOnClickListener {
+            val tab = tabs.getOrNull(currentTabIndex)
+            val currentUrl = tab?.url ?: ""
+            if (currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtu.be/") || currentUrl.contains("youtube.com/shorts/")) {
+                Toast.makeText(this, "🚀 Fetching YouTube Premium Links...", Toast.LENGTH_SHORT).show()
+                createNewTab("https://ssyoutube.com/en177/?url=" + java.net.URLEncoder.encode(currentUrl, "UTF-8"))
+            } else {
+                tab?.evaluateJavascript("(function(){ var v = document.querySelector('video'); if(v && v.src && !v.src.startsWith('blob:')) return v.src; var s = document.querySelector('video source'); if(s && s.src && !s.src.startsWith('blob:')) return s.src; var a = document.querySelector('audio'); if(a && a.src && !a.src.startsWith('blob:')) return a.src; return 'not_found'; })()") { result ->
+                    val res = result?.replace("\"", "")
+                    if (res != null && res != "not_found" && res != "null" && res.isNotBlank()) {
+                        Toast.makeText(this, "📥 Media Found! Downloading...", Toast.LENGTH_SHORT).show()
+                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(res))
+                        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        request.setTitle("Infer Browser Download")
+                        getSystemService(android.app.DownloadManager::class.java).enqueue(request)
+                    } else {
+                        Toast.makeText(this, "❌ Media link nahi mila! (Protected/Blob Video)", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+        findViewById<Button>(R.id.btnDownloads).setOnLongClickListener { openDownloadsFolder(); true }
 
         findViewById<Button>(R.id.btnRefresh).setOnClickListener {
             val wv = tabs.getOrNull(currentTabIndex)
