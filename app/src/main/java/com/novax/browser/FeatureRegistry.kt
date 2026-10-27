@@ -1,7 +1,7 @@
 package com.novax.browser
 
 /**
- * NovaX Browser staged feature registry.
+ * Infer Browser staged feature registry.
  * PREPARE ONLY: these flags are not wired into MainActivity yet.
  * Do not treat a listed flag as an active feature.
  */

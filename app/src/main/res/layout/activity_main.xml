@@ -23,7 +23,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="⚡ NovaX 4K Browser"
+            android:text="⚡ Infer Browser"
             android:textColor="#58A6FF"
             android:textStyle="bold"
             android:textSize="14sp" />
@@ -60,9 +60,11 @@
         android:id="@+id/miniPlayerBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1F6FEB"
-        android:padding="6dp"
+        android:background="@drawable/novax_glass_surface"
+        android:padding="7dp"
+        android:layout_margin="6dp"
         android:gravity="center_vertical"
+        android:elevation="8dp"
         android:visibility="gone">
         <TextView
             android:id="@+id/tvMiniPlayerTitle"
@@ -73,13 +75,14 @@
             android:textColor="#FFFFFF"
             android:textSize="12sp"
             android:singleLine="true"
+            android:ellipsize="marquee"
             android:textStyle="bold" />
         <Button
             android:id="@+id/btnMiniPrevious"
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="⏪"
-            android:backgroundTint="#0D1117"
+            android:backgroundTint="#553FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniNext"
@@ -87,7 +90,7 @@
             android:layout_height="32dp"
             android:layout_marginStart="2dp"
             android:text="⏩"
-            android:backgroundTint="#0D1117"
+            android:backgroundTint="#553FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniPlayPause"
@@ -95,7 +98,7 @@
             android:layout_height="32dp"
             android:text="⏯️ Play"
             android:textSize="10sp"
-            android:backgroundTint="#0D1117"
+            android:backgroundTint="#553FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniClose"
@@ -104,7 +107,7 @@
             android:layout_marginStart="4dp"
             android:text="✖"
             android:textSize="10sp"
-            android:backgroundTint="#DA3633"
+            android:backgroundTint="#66DA3633"
             android:textColor="#FFFFFF" />
     </LinearLayout>
 

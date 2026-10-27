@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#080d18">
-<title>NovaX Home</title>
+<title>Infer Browser Home</title>
 <style>
 :root {
   --bg:#080d18;
@@ -164,17 +164,17 @@ body{
     </div>
   </main>
 
-  <div class="footer">NovaX Browser • Custom Home</div>
+  <div class="footer">Infer Browser • Custom Home</div>
 </div>
 
 <div class="overlay" id="editor">
   <div class="panel">
     <h2>🎨 Home Customization</h2>
-    <p class="note">Personalize your NovaX start screen. Changes are saved on this device.</p>
+    <p class="note">Personalize your Infer Browser start screen. Changes are saved on this device.</p>
 
     <div class="field">
       <label for="logoText">Logo / Brand Text</label>
-      <input id="logoText" maxlength="32" value="NovaX">
+      <input id="logoText" maxlength="32" value="Infer">
     </div>
 
     <div class="field">
@@ -271,7 +271,7 @@ body{
 
 <script>
 const defaults = {
-  logoText:"NovaX", tagText:"Your world. Your browser.",
+  logoText:"Infer", tagText:"Your world. Your browser.",
   logoColor:"#ffffff", accentColor:"#38bdf8",
   bgColor:"#080d18", searchColor:"#ffffff",
   logoSize:"52", radius:"28", hintText:"Search the web...",
@@ -348,7 +348,7 @@ function requestCustomize(){
   if(window.NovaX && typeof NovaX.requestCustomization==="function"){
     NovaX.requestCustomization();
   }else{
-    alert("Home customization will be enabled when connected to NovaX Browser.");
+    alert("Home customization will be enabled when connected to Infer Browser.");
   }
 }
 function closeEditor(){document.getElementById("editor").classList.remove("open");}
@@ -358,7 +358,7 @@ function saveSettings(){
    "logoSize","radius","hintText","wallpaperUrl"].forEach(k=>{
      next[k]=document.getElementById(k).value;
    });
-  next.logoText=safeText(next.logoText,32)||"NovaX";
+  next.logoText=safeText(next.logoText,32)||"Infer";
   next.tagText=safeText(next.tagText,60);
   next.hintText=safeText(next.hintText,60)||"Search the web...";
   next.wallpaperUrl=safeText(next.wallpaperUrl,1500);
