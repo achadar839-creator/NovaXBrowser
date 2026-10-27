@@ -835,7 +835,8 @@ private val fileUploadPicker = registerForActivityResult(
                     view?.evaluateJavascript(liquidJs, null)
                 }
                 if (isPremiumActive() && url?.contains("youtube.com") == true) {
-                    view?.evaluateJavascript("setInterval(function(){ var s = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern'); if(s) { s.click(); } var v = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video'); if(v && document.querySelector('.ytp-ad-player-overlay')) { v.currentTime = v.duration; } }, 500);", null)
+                    val ultraFastAdSkipper = """(function(){ var style = document.createElement('style'); style.innerHTML = '.ad-showing video { opacity: 0 !important; pointer-events: none !important; } .ytp-ad-player-overlay, .ytp-ad-image-overlay { display: none !important; }'; if(!document.getElementById('novax-ad-hide')){ style.id='novax-ad-hide'; document.head.appendChild(style); } setInterval(function(){ var s = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern'); if(s) { s.click(); } var v = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video'); if(v && document.querySelector('.ytp-ad-player-overlay')) { if(!isNaN(v.duration)){ v.currentTime = v.duration; } } }, 40); })();"""
+                    view?.evaluateJavascript(ultraFastAdSkipper, null)
                 }
 
                 if (!url.isNullOrBlank() &&
