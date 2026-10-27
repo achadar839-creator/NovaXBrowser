@@ -801,6 +801,22 @@ private val fileUploadPicker = registerForActivityResult(
                 if (request?.url?.host?.contains("doubleclick.net") == true) {
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
                 }
+                val adHost = request?.url?.host?.lowercase().orEmpty()
+                if (isPremiumActive() && (
+                    adHost == "googlesyndication.com" ||
+                    adHost.endsWith(".googlesyndication.com") ||
+                    adHost == "googleadservices.com" ||
+                    adHost.endsWith(".googleadservices.com") ||
+                    adHost == "googletagservices.com" ||
+                    adHost.endsWith(".googletagservices.com")
+                )) {
+                    return WebResourceResponse(
+                        "text/plain", "UTF-8",
+                        204, "No Content", emptyMap(),
+                        java.io.ByteArrayInputStream(ByteArray(0))
+                    )
+                }
+
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
