@@ -1228,17 +1228,42 @@ private val fileUploadPicker = registerForActivityResult(
         }
     }
 
+    private var nativeHomeView: android.widget.LinearLayout? = null
     private fun openHomePage() {
-        val homeUrl = getSharedPreferences(
-            "novax_preferences", MODE_PRIVATE
-        ).getString("custom_homepage", "https://www.google.com")
-            ?: "https://www.google.com"
-
         val tab = tabs.getOrNull(currentTabIndex) ?: return
-        if (homeUrl == "https://www.google.com" ||
-            homeUrl == "https://www.google.com/") {
-            loadInferHome(tab)
+        val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
+        val homeUrl = prefs.getString("custom_homepage", "https://www.google.com") ?: "https://www.google.com"
+        if (homeUrl.contains("google.com") || homeUrl.isEmpty()) {
+            tab.visibility = android.view.View.GONE
+            if (nativeHomeView == null) {
+                nativeHomeView = android.widget.LinearLayout(this).apply {
+                    layoutParams = android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = android.view.Gravity.CENTER
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        tag = "home_title"
+                        textSize = 42f
+                        setTextColor(android.graphics.Color.WHITE)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setShadowLayer(15f, 0f, 0f, android.graphics.Color.BLACK)
+                        layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 60 }
+                    })
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        text = "Search or type web address below 👇"
+                        textSize = 15f
+                        setTextColor(android.graphics.Color.parseColor("#EEEEEE"))
+                        setShadowLayer(8f, 0f, 0f, android.graphics.Color.BLACK)
+                    })
+                }
+                findViewById<android.widget.FrameLayout>(R.id.webContainer).addView(nativeHomeView, 1)
+            }
+            nativeHomeView?.visibility = android.view.View.VISIBLE
+            nativeHomeView?.findViewWithTag<android.widget.TextView>("home_title")?.text = prefs.getString("browser_title", "⚡ Infer Browser")
+            etUrl.setText("")
+            etUrl.hint = prefs.getString("search_hint", "Search or enter address")
         } else {
+            nativeHomeView?.visibility = android.view.View.GONE
+            tab.visibility = android.view.View.VISIBLE
             tab.loadUrl(homeUrl)
         }
     }
@@ -1878,6 +1903,8 @@ override fun onDestroy() {
 
 
         findViewById<Button>(R.id.btnGo).setOnClickListener { 
+            nativeHomeView?.visibility = android.view.View.GONE
+            tabs.getOrNull(currentTabIndex)?.visibility = android.view.View.VISIBLE
             val u = etUrl.text.toString()
             if (u.startsWith("https://") || u.startsWith("http://")) {
                 tabs.getOrNull(currentTabIndex)?.loadUrl(u)
@@ -2030,6 +2057,7 @@ override fun onDestroy() {
                 if (which == 2 && value.isNotBlank() && !value.startsWith("http")) value = "https://$value"
                 prefs.edit().putString(keys[which], value).apply()
                 if (which == 0) findViewById<android.widget.TextView>(R.id.tvBrand).text = value
+                if (which == 0) nativeHomeView?.findViewWithTag<android.widget.TextView>("home_title")?.text = value
                 if (which == 1) etUrl.hint = value
             }.show()
     }
