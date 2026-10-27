@@ -457,6 +457,7 @@ private val fileUploadPicker = registerForActivityResult(
         progressBar.progress = 0
         progressBar.visibility = View.GONE
 
+                            nativeHomeView?.visibility = android.view.View.GONE
         createNewTab("https://www.google.com")
         openHomePage()
         setupButtons()
@@ -826,52 +827,37 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
-                    // एड-ब्लॉकर (सिर्फ प्रीमियम होने पर 1ms में उड़ाएगा)
+                    // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
                         (function() {
-                            var style = document.createElement('style');
-                            style.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, .ytp-ad-message-overlay { display: none !important; }';
-                            if(!document.getElementById('novax-premium-adblock')) {
-                                style.id = 'novax-premium-adblock';
-                                document.head.appendChild(style);
-                            }
+                            if(window.novaxAdKiller) return;
+                            window.novaxAdKiller = true;
+                            var s = document.createElement('style');
+                            s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, .ytp-ad-persistent-progress-bar { display: none !important; }';
+                            document.head.appendChild(s);
                             setInterval(function() {
                                 var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
-                                if(btn) btn.click();
+                                if(btn) { btn.click(); }
                                 var vid = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video');
                                 if(vid && document.querySelector('.ytp-ad-player-overlay') && !isNaN(vid.duration)) {
                                     vid.currentTime = vid.duration;
                                 }
-                            }, 1);
+                            }, 50);
                         })();
                         """, null)
                     }
 
-                    // फ्लोटिंग डाउनलोडर और मीडिया सिंक (SPA Fix)
+                    // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
                     view?.evaluateJavascript("""
                     (function() {
-                        function addDlBtn() {
-                            if(!window.location.href.includes('youtube.com') && !window.location.href.includes('youtu.be')) return;
-                            if(!document.getElementById('novax-float-dl')) {
-                                var btn = document.createElement('div');
-                                btn.id = 'novax-float-dl';
-                                btn.innerHTML = '📥 DL';
-                                btn.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:9999999; background:rgba(20,20,20,0.9); backdrop-filter:blur(10px); border:2px solid #00ffcc; color:#fff; padding:12px 18px; border-radius:30px; font-weight:900; font-size:16px; cursor:pointer; box-shadow: 0 0 15px #00ffcc;';
-                                btn.onclick = function() { window.location.href = 'https://ssyoutube.com/en177/?url=' + encodeURIComponent(window.location.href); };
-                                document.body.appendChild(btn);
-                            }
-                        }
-                        addDlBtn();
-                        if(!window.novaxObs) {
-                            window.novaxObs = new MutationObserver(function() { addDlBtn(); });
-                            window.novaxObs.observe(document.body, {childList: true, subtree: true});
-                        }
+                        if(window.novaxSync) return;
+                        window.novaxSync = true;
                         var lastUrl = location.href;
                         setInterval(function() {
                             if(location.href !== lastUrl) {
                                 lastUrl = location.href;
-                                setTimeout(function(){ document.title = document.title + ' 🎵'; }, 50);
+                                document.title = document.title + ' 🎵';
                             }
                         }, 200);
                     })();
@@ -928,6 +914,7 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun showTabsOverview() {
         if (tabs.isEmpty()) {
+                            nativeHomeView?.visibility = android.view.View.GONE
             createNewTab("https://www.google.com")
             return
         }
@@ -1001,6 +988,7 @@ private val fileUploadPicker = registerForActivityResult(
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 dialog.dismiss()
+                            nativeHomeView?.visibility = android.view.View.GONE
                 createNewTab("https://www.google.com")
             }
         }
@@ -1034,6 +1022,7 @@ private val fileUploadPicker = registerForActivityResult(
 
         if (tabs.isEmpty()) {
             currentTabIndex = 0
+                            nativeHomeView?.visibility = android.view.View.GONE
             createNewTab("https://www.google.com")
             return
         }
@@ -1320,6 +1309,7 @@ private val fileUploadPicker = registerForActivityResult(
                             setStroke(3, android.graphics.Color.parseColor("#66FFFFFF"))
                         }
                         setOnClickListener {
+                            nativeHomeView?.visibility = android.view.View.GONE
                             createNewTab("https://www.google.com")
                         }
                         textSize = 15f
@@ -2090,6 +2080,7 @@ override fun onDestroy() {
                     tabs.removeAt(index)
                     webContainer.removeView(musicTab)
                     if (tabs.isEmpty()) {
+                            nativeHomeView?.visibility = android.view.View.GONE
                         createNewTab("https://www.google.com")
                     } else {
                         if (currentTabIndex > index) currentTabIndex--

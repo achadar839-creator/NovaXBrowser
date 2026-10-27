@@ -167,13 +167,27 @@ class BackgroundPlayService : Service() {
         startForeground(NOTIFICATION_ID, notification)
     }
 
-    private fun loadArtwork(url: String): Bitmap? {
+    private fun loadArtwork(url: String): android.graphics.Bitmap? {
         if (url.isBlank()) return null
         val videoId = Regex("(?:youtube\\.com/watch\\?[^#]*v=|youtu\\.be/|youtube\\.com/shorts/)([A-Za-z0-9_-]{11})").find(url)?.groupValues?.get(1) ?: return null
         return try {
-            java.net.URL("https://img.youtube.com/vi/$videoId/hqdefault.jpg").openConnection().apply {
+            val original = java.net.URL("https://img.youtube.com/vi/$videoId/hqdefault.jpg").openConnection().apply {
                 connectTimeout = 2500; readTimeout = 2500
-            }.getInputStream().use { BitmapFactory.decodeStream(it) }
+            }.getInputStream().use { android.graphics.BitmapFactory.decodeStream(it) } ?: return null
+            
+            // Apply Premium Dark Gradient at the bottom for Player Controls
+            val result = android.graphics.Bitmap.createBitmap(original.width, original.height, original.config ?: android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(result)
+            canvas.drawBitmap(original, 0f, 0f, null)
+            val paint = android.graphics.Paint()
+            val shader = android.graphics.LinearGradient(
+                0f, original.height * 0.5f, 0f, original.height.toFloat(),
+                android.graphics.Color.TRANSPARENT, android.graphics.Color.parseColor("#CC000000"),
+                android.graphics.Shader.TileMode.CLAMP
+            )
+            paint.shader = shader
+            canvas.drawRect(0f, original.height * 0.5f, original.width.toFloat(), original.height.toFloat(), paint)
+            result
         } catch (_: Exception) { null }
     }
 
