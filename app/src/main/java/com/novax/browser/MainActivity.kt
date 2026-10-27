@@ -283,41 +283,81 @@ private val fileUploadPicker = registerForActivityResult(
                     val js = if (intent.action == BackgroundPlayService.ACTION_NEXT) {
                         """(function(){
                             var b = document.querySelector(
-                                '.ytp-next-button, button[aria-label="Next"], button[aria-label="Next track"], button[data-testid="control-button-skip-forward"]'
+                                '.ytp-next-button, button[aria-label="Next"], button[aria-label="Next track"], button[title="Next"]'
                             );
-                            if (b && !b.disabled) { b.click(); return 'clicked'; }
+                            if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
+                                b.click();
+                                return 'clicked';
+                            }
                             return 'unavailable';
                         })()"""
                     } else {
                         """(function(){
                             var b = document.querySelector(
-                                '.ytp-prev-button, button[aria-label="Previous"], button[aria-label="Previous track"], button[data-testid="control-button-skip-back"]'
+                                '.ytp-prev-button, button[aria-label="Previous"], button[aria-label="Previous track"], button[title="Previous"]'
                             );
-                            if (b && !b.disabled) { b.click(); return 'clicked'; }
+                            if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
+                                b.click();
+                                return 'clicked';
+                            }
                             return 'unavailable';
                         })()"""
                     }
                     tab.evaluateJavascript(js, null)
+                } else {
+                    Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
                 }
             }
 
             BackgroundPlayService.ACTION_PLAY_PAUSE -> {
                 val tab = pinnedMusicTab
                 if (tab == null) {
-                    val update = Intent(this, BackgroundPlayService::class.java).apply {
-                        putExtra(BackgroundPlayService.EXTRA_TITLE, "Infer Browser Audio")
-                        putExtra(BackgroundPlayService.EXTRA_PLAYING, false)
-                    }
-                    startService(update)
+                    Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
                 } else {
-                    tab.evaluateJavascript(
-                        "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused&&!x.ended)||a.find(x=>x.readyState>0&&!x.ended);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});function state(){return JSON.stringify({playing:!m.paused&&!m.ended,title:document.title,url:location.href});}if(m.paused){try{return m.play().then(function(){return state();}).catch(function(){return state();});}catch(e){return state();}}m.pause();return state();})()"
-                    ) { raw ->
+                    val js = """(function(){
+                        var media = Array.from(document.querySelectorAll('video,audio'));
+                        var m = media.find(function(x){ return !x.paused && !x.ended; });
+                        if (!m) {
+                            m = media.find(function(x){ return x.readyState > 0 && !x.ended; });
+                        }
+                        if (!m) {
+                            return JSON.stringify({
+                                playing: false,
+                                title: document.title,
+                                url: location.href,
+                                found: false
+                            });
+                        }
+
+                        if (m.paused || m.ended) {
+                            try {
+                                var promise = m.play();
+                                if (promise && promise.catch) {
+                                    promise.catch(function(){});
+                                }
+                            } catch(e) {}
+                        } else {
+                            m.pause();
+                        }
+
+                        return JSON.stringify({
+                            playing: !m.paused && !m.ended,
+                            title: document.title,
+                            url: location.href,
+                            found: true
+                        });
+                    })()"""
+
+                    tab.evaluateJavascript(js) { raw ->
                         try {
                             val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
-                            val json = if (decoded is String) org.json.JSONObject(decoded)
-                                       else decoded as? org.json.JSONObject
-                            if (json != null) {
+                            val json = if (decoded is String) {
+                                org.json.JSONObject(decoded)
+                            } else {
+                                decoded as? org.json.JSONObject
+                            }
+
+                            if (json != null && json.optBoolean("found", false)) {
                                 val update = Intent(this, BackgroundPlayService::class.java).apply {
                                     putExtra(
                                         BackgroundPlayService.EXTRA_TITLE,
@@ -335,7 +375,7 @@ private val fileUploadPicker = registerForActivityResult(
                                 startService(update)
                             }
                         } catch (_: Exception) {
-                            // Keep the current notification if the page returns invalid media state.
+                            // Ignore invalid JavaScript responses.
                         }
                     }
                 }
