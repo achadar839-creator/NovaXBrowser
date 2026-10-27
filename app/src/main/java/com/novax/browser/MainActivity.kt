@@ -684,6 +684,12 @@ private val fileUploadPicker = registerForActivityResult(
                 if (view === tabs.getOrNull(currentTabIndex) && !title.isNullOrBlank()) {
                     pageTitle = title
                     this@MainActivity.title = title
+                    if (pinnedMusicTab === view) {
+                        val i = android.content.Intent(this@MainActivity, com.novax.browser.MusicService::class.java)
+                        i.putExtra("url", view?.url)
+                        i.putExtra("title", title)
+                        startService(i)
+                    }
                 }
             }
         }
@@ -842,36 +848,32 @@ private val fileUploadPicker = registerForActivityResult(
                         """, null)
                     }
 
-                    // फ्लोटिंग डाउनलोडर और मीडिया सिंक
+                    // फ्लोटिंग डाउनलोडर और मीडिया सिंक (SPA Fix)
                     view?.evaluateJavascript("""
                     (function() {
-                        setInterval(function() {
-                            if(!window.location.href.includes('youtube.com') && !window.location.href.includes('youtu.be')) {
-                                var oldBtn = document.getElementById('novax-float-dl');
-                                if(oldBtn) oldBtn.style.display = 'none';
-                                return;
-                            }
-                            var btn = document.getElementById('novax-float-dl');
-                            if(!btn) {
-                                btn = document.createElement('div');
+                        function addDlBtn() {
+                            if(!window.location.href.includes('youtube.com') && !window.location.href.includes('youtu.be')) return;
+                            if(!document.getElementById('novax-float-dl')) {
+                                var btn = document.createElement('div');
                                 btn.id = 'novax-float-dl';
-                                btn.innerHTML = '📥 Download MP3/MP4';
-                                btn.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:999999; background:rgba(10,13,20,0.8); backdrop-filter:blur(10px); border:1px solid #00ffcc; color:#fff; padding:10px 15px; border-radius:25px; font-weight:bold; cursor:pointer;';
+                                btn.innerHTML = '📥 DL';
+                                btn.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:9999999; background:rgba(20,20,20,0.9); backdrop-filter:blur(10px); border:2px solid #00ffcc; color:#fff; padding:12px 18px; border-radius:30px; font-weight:900; font-size:16px; cursor:pointer; box-shadow: 0 0 15px #00ffcc;';
                                 btn.onclick = function() { window.location.href = 'https://ssyoutube.com/en177/?url=' + encodeURIComponent(window.location.href); };
                                 document.body.appendChild(btn);
-                            } else {
-                                btn.style.display = 'block';
                             }
-                        }, 1000);
-
-                        /* मीडिया सिंक फिक्स */
+                        }
+                        addDlBtn();
+                        if(!window.novaxObs) {
+                            window.novaxObs = new MutationObserver(function() { addDlBtn(); });
+                            window.novaxObs.observe(document.body, {childList: true, subtree: true});
+                        }
                         var lastUrl = location.href;
                         setInterval(function() {
                             if(location.href !== lastUrl) {
                                 lastUrl = location.href;
-                                setTimeout(function(){ document.title = document.title + ' '; }, 150);
+                                setTimeout(function(){ document.title = document.title + ' 🎵'; }, 50);
                             }
-                        }, 1000);
+                        }, 200);
                     })();
                     """, null)
                 // novax_transparent_home_wallpaper
