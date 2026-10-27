@@ -1936,7 +1936,7 @@ override fun onDestroy() {
             val currentUrl = tab?.url ?: ""
             if (currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtu.be/") || currentUrl.contains("youtube.com/shorts/")) {
                 Toast.makeText(this, "🚀 Fetching YouTube Premium Links...", Toast.LENGTH_SHORT).show()
-                createNewTab("https://ssyoutube.com/en177/?url=" + java.net.URLEncoder.encode(currentUrl, "UTF-8"))
+// Ghost downloader permanently removed
             } else {
                 tab?.evaluateJavascript("(function(){ var v = document.querySelector('video'); if(v && v.src && !v.src.startsWith('blob:')) return v.src; var s = document.querySelector('video source'); if(s && s.src && !s.src.startsWith('blob:')) return s.src; var a = document.querySelector('audio'); if(a && a.src && !a.src.startsWith('blob:')) return a.src; return 'not_found'; })()") { result ->
                     val res = result?.replace("\"", "")
