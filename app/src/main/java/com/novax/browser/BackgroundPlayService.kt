@@ -9,12 +9,12 @@ import android.os.Build
 import android.os.IBinder
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import kotlin.concurrent.thread
 
 class BackgroundPlayService : Service() {
 
@@ -33,6 +33,7 @@ class BackgroundPlayService : Service() {
     }
 
     private var mediaSession: MediaSessionCompat? = null
+    private var artworkBitmap: Bitmap? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -41,43 +42,22 @@ class BackgroundPlayService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Infer Browser Audio",
-                NotificationManager.IMPORTANCE_NONE
-            ).apply {
-                description = "Infer Browser media controls"
-                setShowBadge(false)
-            }
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
+                NotificationManager.IMPORTANCE_LOW
+            ).apply { setShowBadge(false) }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
 
-        mediaSession = MediaSessionCompat(this, "NovaXBrowser").apply {
+        mediaSession = MediaSessionCompat(this, "InferBrowser").apply {
             setCallback(object : MediaSessionCompat.Callback() {
-                override fun onPlay() {
-                    sendActionToBrowser(ACTION_PLAY_PAUSE)
-                }
-
-                override fun onPause() {
-                    sendActionToBrowser(ACTION_PLAY_PAUSE)
-                }
-
-                override fun onSkipToNext() {
-                    sendActionToBrowser(ACTION_NEXT)
-                }
-
-                override fun onSkipToPrevious() {
-                    sendActionToBrowser(ACTION_PREVIOUS)
-                }
-
+                override fun onPlay() = sendActionToBrowser(ACTION_PLAY_PAUSE)
+                override fun onPause() = sendActionToBrowser(ACTION_PLAY_PAUSE)
+                override fun onSkipToNext() = sendActionToBrowser(ACTION_NEXT)
+                override fun onSkipToPrevious() = sendActionToBrowser(ACTION_PREVIOUS)
                 override fun onStop() {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
             })
-
-            setFlags(
-                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-                    MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
-            )
             isActive = true
         }
     }
@@ -85,24 +65,19 @@ class BackgroundPlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CLOSE -> {
-                mediaSession?.isActive = false
+                sendActionToBrowser(ACTION_CLOSE)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
             }
-
-            ACTION_PLAY_PAUSE, ACTION_NEXT, ACTION_PREVIOUS,
-            ACTION_OPEN_PINNED -> {
+            ACTION_PLAY_PAUSE, ACTION_NEXT, ACTION_PREVIOUS -> {
                 sendActionToBrowser(intent.action!!)
+                return START_STICKY
             }
         }
 
-        val title = intent?.getStringExtra(EXTRA_TITLE)
-            ?.takeIf { it.isNotBlank() } ?: "Infer Browser Audio"
-        // NOVAX_GLASS_ARTWORK_PATCH
+        val title = intent?.getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() } ?: "Playing Media"
         val mediaUrl = intent?.getStringExtra(EXTRA_URL).orEmpty()
-        val artwork = loadArtwork(mediaUrl)
-
         val prefs = getSharedPreferences("novax_audio_state", MODE_PRIVATE)
 
         val playing = if (intent?.hasExtra(EXTRA_PLAYING) == true) {
@@ -113,76 +88,69 @@ class BackgroundPlayService : Service() {
             prefs.getBoolean("playing", true)
         }
 
+        updateNotification(title, playing)
+
+        // Load thumbnail in background to avoid freezing
+        thread {
+            val newArtwork = loadArtwork(mediaUrl)
+            if (newArtwork != null) {
+                artworkBitmap = newArtwork
+                updateNotification(title, playing)
+            }
+        }
+
+        return START_STICKY
+    }
+
+    private fun updateNotification(title: String, playing: Boolean) {
+        val playPauseIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val playPauseTitle = if (playing) "Pause" else "Play"
+
         mediaSession?.setMetadata(
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "Infer Browser")
+                .apply { artworkBitmap?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build()
         )
-
-        val playbackActions =
-            PlaybackStateCompat.ACTION_PLAY or
-            PlaybackStateCompat.ACTION_PAUSE or
-            PlaybackStateCompat.ACTION_PLAY_PAUSE or
-            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-            PlaybackStateCompat.ACTION_STOP
 
         mediaSession?.setPlaybackState(
             PlaybackStateCompat.Builder()
-                .setActions(playbackActions)
-                .setState(
-                    if (playing) PlaybackStateCompat.STATE_PLAYING
-                    else PlaybackStateCompat.STATE_PAUSED,
-                    PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN,
-                    if (playing) 1f else 0f
-                )
+                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                .setState(if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f)
                 .build()
         )
+
+        fun actionPending(action: String, reqCode: Int): PendingIntent {
+            val i = Intent(this, BackgroundPlayService::class.java).apply { this.action = action }
+            return PendingIntent.getService(this, reqCode, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
 
         val openIntent = Intent(this, MainActivity::class.java).apply {
             action = ACTION_OPEN_PINNED
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-
-        val openPending = PendingIntent.getActivity(
-            this, 100, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        fun actionPending(action: String, requestCode: Int): PendingIntent {
-            val actionIntent = Intent(this, BackgroundPlayService::class.java).apply {
-                this.action = action
-            }
-            return PendingIntent.getService(
-                this, requestCode, actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-        }
-
-        val playPauseIcon =
-            if (playing) android.R.drawable.ic_media_pause
-            else android.R.drawable.ic_media_play
+        val openPending = PendingIntent.getActivity(this, 100, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title)
-            .setContentText("INFER • LIVE AUDIO")
-            .setSubText("INFER • BACKGROUND PLAYER")
-            .setColor(artwork?.let { dominantColor(it) } ?: android.graphics.Color.rgb(76, 141, 255))
-            .setColorized(true)
-            .apply { if (artwork != null) setLargeIcon(artwork) }
+            .setContentText("Infer Browser")
+            .setLargeIcon(artworkBitmap)
             .setContentIntent(openPending)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .setOnlyAlertOnce(true)
-            .setShowWhen(false)
-            .setOngoing(true)
+            .setOngoing(playing)
+            .addAction(android.R.drawable.ic_media_previous, "Prev", actionPending(ACTION_PREVIOUS, 1))
+            .addAction(playPauseIcon, playPauseTitle, actionPending(ACTION_PLAY_PAUSE, 2))
+            .addAction(android.R.drawable.ic_media_next, "Next", actionPending(ACTION_NEXT, 3))
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", actionPending(ACTION_CLOSE, 4))
+            .setStyle(MediaStyle()
+                .setMediaSession(mediaSession?.sessionToken)
+                .setShowActionsInCompactView(1, 2, 3) // Shows Play/Pause & Close in small view
+            )
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
-        return START_NOT_STICKY
     }
 
     private fun loadArtwork(url: String): Bitmap? {
@@ -190,33 +158,19 @@ class BackgroundPlayService : Service() {
         val videoId = Regex("(?:youtube\\.com/watch\\?[^#]*v=|youtu\\.be/|youtube\\.com/shorts/)([A-Za-z0-9_-]{11})")
             .find(url)?.groupValues?.get(1) ?: return null
         return try {
-            val connection = java.net.URL("https://img.youtube.com/vi/$videoId/hqdefault.jpg")
-                .openConnection()
-            connection.connectTimeout = 2500
-            connection.readTimeout = 2500
-            connection.getInputStream().use { BitmapFactory.decodeStream(it) }
+            java.net.URL("https://img.youtube.com/vi/$videoId/hqdefault.jpg").openConnection().apply {
+                connectTimeout = 2500
+                readTimeout = 2500
+            }.getInputStream().use { BitmapFactory.decodeStream(it) }
         } catch (_: Exception) { null }
     }
 
-    private fun dominantColor(bitmap: Bitmap): Int {
-        val small = Bitmap.createScaledBitmap(bitmap, 1, 1, true)
-        val pixel = small.getPixel(0, 0)
-        if (small !== bitmap) small.recycle()
-        val r = (android.graphics.Color.red(pixel) * 0.72f).toInt()
-        val g = (android.graphics.Color.green(pixel) * 0.72f).toInt()
-        val b = (android.graphics.Color.blue(pixel) * 0.72f).toInt()
-        return android.graphics.Color.rgb(r, g, b)
-    }
-
     private fun sendActionToBrowser(action: String) {
-        val intent = Intent(action).setPackage(packageName)
-        sendBroadcast(intent)
+        sendBroadcast(Intent(action).setPackage(packageName))
     }
 
     override fun onDestroy() {
-        mediaSession?.isActive = false
         mediaSession?.release()
-        mediaSession = null
         super.onDestroy()
     }
 
