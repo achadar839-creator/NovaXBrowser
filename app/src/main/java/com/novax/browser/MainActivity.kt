@@ -686,7 +686,7 @@ private val fileUploadPicker = registerForActivityResult(
                     pageTitle = title
                     this@MainActivity.title = title
                     if (pinnedMusicTab === view) {
-                        val i = android.content.Intent(this@MainActivity, com.novax.browser.MusicService::class.java)
+                        val i = android.content.Intent(this@MainActivity, com.novax.browser.BackgroundPlayService::class.java)
                         i.putExtra("url", view?.url)
                         i.putExtra("title", title)
                         startService(i)
