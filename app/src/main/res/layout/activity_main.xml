@@ -223,7 +223,6 @@
             android:layout_height="wrap_content"
             android:text="Restore Session" />
         <Button
-            android:id="@+id/btnSpeakPage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Read Aloud" />

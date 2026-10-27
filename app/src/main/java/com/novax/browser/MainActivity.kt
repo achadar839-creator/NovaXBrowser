@@ -119,7 +119,7 @@ private val qrCameraLauncher = registerForActivityResult(
                         AlertDialog.Builder(this)
                             .setTitle("QR Code मिला")
                             .setMessage(value)
-                            .setNegativeButton("बंद करें", null)
+                            .setNegativeButton("Close", null)
                             .setPositiveButton("खोलें") { _, _ ->
                                 val parsed = android.net.Uri.parse(value.trim())
                                 val scheme = parsed.scheme?.lowercase()
@@ -830,6 +830,10 @@ private val fileUploadPicker = registerForActivityResult(
                     )
                 }
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
+                if (url != null && (url.contains("youtube.com") || url.contains("youtu.be"))) {
+                    val liquidJs = """(function() { if(document.getElementById('novax-float-dl')) return; var b = document.createElement('div'); b.id = 'novax-float-dl'; b.innerHTML = '📥 Download MP3 / MP4'; b.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:9999999; background:rgba(30,30,30,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:2px solid rgba(255,255,255,0.3); color:#ffffff; padding:12px 20px; border-radius:30px; font-weight:900; font-family:sans-serif; box-shadow:0 8px 32px rgba(0,0,0,0.4); cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,0.8); transition:transform 0.2s;'; setInterval(function(){ b.style.borderColor = 'hsl(' + (Date.now()/20 % 360) + ', 100%, 65%)'; b.style.boxShadow = '0 0 15px hsl(' + (Date.now()/20 % 360) + ', 100%, 55%, 0.6)'; }, 50); b.onmousedown = function(){ b.style.transform = 'scale(0.95)'; }; b.onmouseup = function(){ b.style.transform = 'scale(1)'; }; b.onclick = function(){ window.location.href = 'https://ssyoutube.com/en177/?url=' + encodeURIComponent(window.location.href); }; document.body.appendChild(b); })();"""
+                    view?.evaluateJavascript(liquidJs, null)
+                }
                 if (isPremiumActive() && url?.contains("youtube.com") == true) {
                     view?.evaluateJavascript("setInterval(function(){ var s = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern'); if(s) { s.click(); } var v = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video'); if(v && document.querySelector('.ytp-ad-player-overlay')) { v.currentTime = v.duration; } }, 500);", null)
                 }
@@ -1252,7 +1256,21 @@ private val fileUploadPicker = registerForActivityResult(
                         layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 60 }
                     })
                     addView(android.widget.TextView(this@MainActivity).apply {
-                        text = "Search or type web address below 👇"
+                        text = "🔍 Search Google or type URL"
+                        textSize = 16f
+                        setTextColor(android.graphics.Color.WHITE)
+                        setPadding(50, 35, 50, 35)
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            cornerRadius = 60f
+                            setColor(android.graphics.Color.parseColor("#25FFFFFF"))
+                            setStroke(3, android.graphics.Color.parseColor("#66FFFFFF"))
+                        }
+                        setOnClickListener {
+                            val et = findViewById<android.widget.EditText>(R.id.etUrl)
+                            et.requestFocus()
+                            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                            imm.showSoftInput(et, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        }
                         textSize = 15f
                         setTextColor(android.graphics.Color.parseColor("#EEEEEE"))
                         setShadowLayer(8f, 0f, 0f, android.graphics.Color.BLACK)
@@ -1274,8 +1292,8 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun showBrowserSettings() {
         val options = arrayOf(
-            "होमपेज बदलें",
-            "ब्राउज़िंग हिस्ट्री साफ़ करें"
+            "Change Homepage",
+            "Clear Browsing History"
         )
         AlertDialog.Builder(this)
             .setTitle("Infer Browser Settings")
@@ -1325,7 +1343,7 @@ private val fileUploadPicker = registerForActivityResult(
                         ).show()
                     }
                 }
-            }.setNegativeButton("बंद करें", null).show()
+            }.setNegativeButton("Close", null).show()
     }
 
 
@@ -1360,7 +1378,7 @@ private val fileUploadPicker = registerForActivityResult(
                 val index = currentTabIndex
                 if (index in tabs.indices) tabs[index].loadUrl(urls[which])
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1580,11 +1598,11 @@ private val fileUploadPicker = registerForActivityResult(
                         }
                         Toast.makeText(
                             this,
-                            "डाउनलोड शुरू: $count फाइलें",
+                            "Download Started: $count Files",
                             Toast.LENGTH_LONG
                         ).show()
                     }
-                    .setNegativeButton("बंद करें", null)
+                    .setNegativeButton("Close", null)
                     .show()
             } catch (_: Exception) {
                 Toast.makeText(
@@ -1638,7 +1656,7 @@ private val fileUploadPicker = registerForActivityResult(
                     }
                 }
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1679,7 +1697,7 @@ private val fileUploadPicker = registerForActivityResult(
                 Toast.makeText(this, "Search: $selectedSearchEngine", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1768,7 +1786,7 @@ private fun loadSearchEnginePreference() {
                     }
                 }
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1861,7 +1879,6 @@ override fun onDestroy() {
     private fun setupButtons() {
         findViewById<Button>(R.id.btnRestoreSession).setOnClickListener { restoreBrowserSession() }
         findViewById<Button>(R.id.btnFindPage).setOnClickListener { findTextInPage() }
-        findViewById<Button>(R.id.btnSpeakPage).setOnClickListener { speakPageText() }
         findViewById<Button>(R.id.btnQrScanner).setOnClickListener { showQrScannerNotice() }
         findViewById<Button>(R.id.btnReadingMode).setOnClickListener { showReadingMode() }
         findViewById<Button>(R.id.btnSharePage).setOnClickListener { shareCurrentPage() }
