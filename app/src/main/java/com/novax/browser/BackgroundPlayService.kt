@@ -229,16 +229,8 @@ class BackgroundPlayService : Service() {
     }
 
     private fun sendActionToBrowser(action: String) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            this.action = action
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
-
-        try {
-            startActivity(intent)
-        } catch (_: Exception) {
-            // Keep the foreground service alive.
-        }
+        val intent = Intent(action).setPackage(packageName)
+        sendBroadcast(intent)
     }
 
     override fun onDestroy() {

@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     private val tabs = mutableListOf<KeepAliveWebView>()
     private var currentTabIndex = 0
     private var pinnedMusicTab: KeepAliveWebView? = null
+    private var mediaActionReceiver: android.content.BroadcastReceiver? = null
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
@@ -264,6 +265,10 @@ private val fileUploadPicker = registerForActivityResult(
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleMediaAction(intent)
+    }
+
+    private fun handleMediaAction(intent: Intent) {
 
         when (intent.action) {
             BackgroundPlayService.ACTION_OPEN_PINNED -> {
@@ -397,6 +402,29 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
+
+        mediaActionReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(
+                context: android.content.Context?,
+                intent: Intent?
+            ) {
+                if (intent != null) handleMediaAction(intent)
+            }
+        }
+
+        val mediaFilter = android.content.IntentFilter().apply {
+            addAction(BackgroundPlayService.ACTION_PLAY_PAUSE)
+            addAction(BackgroundPlayService.ACTION_NEXT)
+            addAction(BackgroundPlayService.ACTION_PREVIOUS)
+            addAction(BackgroundPlayService.ACTION_OPEN_PINNED)
+        }
+
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            mediaActionReceiver,
+            mediaFilter,
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         val savedTitle = getSharedPreferences("novax_preferences", MODE_PRIVATE)
             .getString("browser_title", null)
         findViewById<android.widget.TextView>(R.id.tvBrand).text =
@@ -1779,6 +1807,10 @@ override fun onDestroy() {
         pageTts?.stop()
         pageTts?.shutdown()
         pageTts = null
+        mediaActionReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
+        mediaActionReceiver = null
         super.onDestroy()
     }
 
