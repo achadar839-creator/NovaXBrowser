@@ -359,6 +359,7 @@ private val fileUploadPicker = registerForActivityResult(
         progressBar.visibility = View.GONE
 
         createNewTab("https://www.google.com")
+        openHomePage()
         setupButtons()
         findViewById<Button>(R.id.btnUiToggle).setOnClickListener {
             toggleBrowserBars()
@@ -469,6 +470,39 @@ private val fileUploadPicker = registerForActivityResult(
         wv.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, false)
         
+
+
+        // novax_home_bridge
+        wv.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun requestCustomization() {
+                runOnUiThread {
+                    if (wv.url != "https://novax.home/") {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "पहले NovaX Home खोलें",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@runOnUiThread
+                    }
+
+                    if (isPremiumActive() || isAdmin()) {
+                        wv.evaluateJavascript("openCustomizer()", null)
+                    } else {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("👑 Premium Feature")
+                            .setMessage(
+                                "Home Screen Customization के लिए Premium unlock करें या Admin account से login करें।"
+                            )
+                            .setPositiveButton("Watch Ads") { _, _ ->
+                                showRewardedUnlock()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                }
+            }
+        }, "NovaX")
 
         wv.webChromeClient = object : WebChromeClient() {
             // novax_web_permission_guard
@@ -671,7 +705,8 @@ private val fileUploadPicker = registerForActivityResult(
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
 
                 if (!url.isNullOrBlank() &&
-                    (url.startsWith("https://") || url.startsWith("http://"))) {
+                    (url.startsWith("https://") || url.startsWith("http://")) &&
+                    !url.startsWith("https://novax.home/")) {
                     val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
                     val history = prefs.getStringSet("browser_history", emptySet())
                         ?.toMutableSet() ?: mutableSetOf()
@@ -1044,15 +1079,40 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
+
+    // novax_custom_home_loader
+    private fun loadNovaXHome(webView: WebView) {
+        try {
+            val html = assets.open("novax_home.html")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            webView.loadDataWithBaseURL(
+                "https://novax.home/",
+                html,
+                "text/html",
+                "UTF-8",
+                null
+            )
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                "NovaX Home नहीं खुल पाया",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     private fun openHomePage() {
         val homeUrl = getSharedPreferences(
             "novax_preferences", MODE_PRIVATE
         ).getString("custom_homepage", "https://www.google.com")
             ?: "https://www.google.com"
 
-        val index = currentTabIndex
-        if (index in tabs.indices) {
-            tabs[index].loadUrl(homeUrl)
+        val tab = tabs.getOrNull(currentTabIndex) ?: return
+        if (homeUrl == "https://www.google.com" ||
+            homeUrl == "https://www.google.com/") {
+            loadNovaXHome(tab)
+        } else {
+            tab.loadUrl(homeUrl)
         }
     }
 

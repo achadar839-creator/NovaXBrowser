@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d18">
+<title>NovaX Home</title>
+<style>
+:root {
+  --bg:#080d18;
+  --panel:rgba(20,30,50,.78);
+  --accent:#38bdf8;
+  --logo:#ffffff;
+  --search:#ffffff;
+  --text:#ffffff;
+  --radius:28px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  font-family:Arial,Helvetica,sans-serif;
+  color:var(--text);
+  background:var(--bg);
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed;
+  transition:background .25s;
+}
+.page{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px 18px 35px;
+  background:linear-gradient(180deg,rgba(3,8,18,.12),rgba(3,8,18,.45));
+}
+.top{
+  width:100%;display:flex;justify-content:flex-end;
+  align-items:center;gap:10px;
+}
+.pill,.shortcut,.action{
+  border:1px solid rgba(255,255,255,.15);
+  background:var(--panel);color:white;
+  border-radius:16px;padding:11px 15px;
+  cursor:pointer;font-size:14px;
+}
+.pill:active,.shortcut:active,.action:active{transform:scale(.97)}
+.content{
+  width:100%;max-width:650px;
+  margin:auto 0;
+  display:flex;flex-direction:column;
+  align-items:center;gap:25px;
+}
+.logo{
+  color:var(--logo);font-size:52px;
+  font-weight:800;letter-spacing:-2px;
+  text-align:center;overflow-wrap:anywhere;
+  text-shadow:0 4px 24px rgba(0,0,0,.25);
+}
+.logo span{color:var(--accent)}
+.tagline{font-size:13px;opacity:.75;margin-top:-17px}
+.search{
+  display:flex;align-items:center;gap:10px;
+  width:100%;padding:7px 9px 7px 17px;
+  background:var(--search);border-radius:var(--radius);
+  box-shadow:0 12px 35px rgba(0,0,0,.25);
+}
+.search input{
+  min-width:0;flex:1;border:0;outline:0;
+  background:transparent;color:#182033;
+  font-size:16px;padding:12px 0;
+}
+.search input::placeholder{color:#697386}
+.search button{
+  border:0;border-radius:50%;
+  width:43px;height:43px;
+  background:var(--accent);color:#07111e;
+  font-size:20px;font-weight:bold;
+}
+.shortcuts{
+  width:100%;display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.shortcut{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;
+  min-width:0;min-height:88px;padding:12px 5px;
+  text-decoration:none;overflow:hidden;
+}
+.icon{
+  display:grid;place-items:center;
+  width:39px;height:39px;border-radius:14px;
+  background:rgba(56,189,248,.18);
+  font-size:22px;
+}
+.label{
+  max-width:100%;font-size:12px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.footer{font-size:11px;opacity:.6;margin-top:20px;text-align:center}
+.hidden{display:none!important}
+.overlay{
+  display:none;position:fixed;inset:0;z-index:10;
+  background:rgba(0,0,0,.7);padding:16px;
+  align-items:center;justify-content:center;
+}
+.overlay.open{display:flex}
+.panel{
+  width:100%;max-width:460px;max-height:90vh;overflow:auto;
+  background:#111827;color:white;border:1px solid #334155;
+  border-radius:22px;padding:20px;
+}
+.panel h2{margin:0 0 8px}
+.note{font-size:12px;color:#aab8cc;line-height:1.5}
+.field{display:flex;flex-direction:column;gap:7px;margin:15px 0}
+.field label{font-size:13px;color:#cbd5e1}
+.field input,.field select{
+  width:100%;padding:12px;border-radius:10px;
+  border:1px solid #475569;background:#0b1220;color:white;
+  font-size:15px;
+}
+.checkrow{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:14px}
+.checkrow input{width:18px;height:18px}
+.actions{display:flex;gap:10px;margin-top:20px}
+.actions button{flex:1}
+.save{background:var(--accent);color:#06101e;font-weight:bold}
+@media(max-width:380px){
+ .logo{font-size:42px}
+ .shortcuts{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ .shortcut{min-height:78px}
+ .label{font-size:10px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <button class="pill" onclick="requestCustomize()">⚙ Customize</button>
+  </div>
+
+  <main class="content">
+    <div id="logo" class="logo">Nova<span>X</span></div>
+    <div id="tagline" class="tagline">Your world. Your browser.</div>
+
+    <form class="search" id="searchForm">
+      <input id="query" type="search" placeholder="Search the web..." autocomplete="off">
+      <button type="submit" aria-label="Search">⌕</button>
+    </form>
+
+    <div class="shortcuts" id="shortcuts">
+      <a class="shortcut" href="https://www.google.com">
+        <span class="icon">G</span><span class="label">Google</span>
+      </a>
+      <a class="shortcut" href="https://www.youtube.com">
+        <span class="icon">▶</span><span class="label">YouTube</span>
+      </a>
+      <a class="shortcut" href="https://www.facebook.com">
+        <span class="icon">f</span><span class="label">Facebook</span>
+      </a>
+      <a class="shortcut" href="https://www.instagram.com">
+        <span class="icon">◎</span><span class="label">Instagram</span>
+      </a>
+    </div>
+  </main>
+
+  <div class="footer">NovaX Browser • Custom Home</div>
+</div>
+
+<div class="overlay" id="editor">
+  <div class="panel">
+    <h2>🎨 Home Customization</h2>
+    <p class="note">Personalize your NovaX start screen. Changes are saved on this device.</p>
+
+    <div class="field">
+      <label for="logoText">Logo / Brand Text</label>
+      <input id="logoText" maxlength="32" value="NovaX">
+    </div>
+
+    <div class="field">
+      <label for="tagText">Subtitle</label>
+      <input id="tagText" maxlength="60" value="Your world. Your browser.">
+    </div>
+
+    <div class="field">
+      <label for="logoColor">Logo Color</label>
+      <input id="logoColor" type="color" value="#ffffff">
+    </div>
+
+    <div class="field">
+      <label for="accentColor">Accent Color</label>
+      <input id="accentColor" type="color" value="#38bdf8">
+    </div>
+
+    <div class="field">
+      <label for="bgColor">Background Color</label>
+      <input id="bgColor" type="color" value="#080d18">
+    </div>
+
+    <div class="field">
+      <label for="searchColor">Search Bar Color</label>
+      <input id="searchColor" type="color" value="#ffffff">
+    </div>
+
+    <div class="field">
+      <label for="logoSize">Logo Size</label>
+      <select id="logoSize">
+        <option value="36">Small</option>
+        <option value="52" selected>Medium</option>
+        <option value="68">Large</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="radius">Search Bar Shape</label>
+      <select id="radius">
+        <option value="8">Square</option>
+        <option value="18">Rounded</option>
+        <option value="28" selected>Pill</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="hintText">Search Placeholder</label>
+      <input id="hintText" maxlength="60" value="Search the web...">
+    </div>
+
+    <div class="field">
+      <label for="wallpaperUrl">Background Image URL (optional)</label>
+      <input id="wallpaperUrl" type="url" placeholder="https://example.com/image.jpg">
+    </div>
+
+    <div class="checkrow">
+      <input id="showTag" type="checkbox" checked>
+      <label for="showTag">Show subtitle</label>
+    </div>
+
+    <div class="checkrow">
+      <input id="showShortcuts" type="checkbox" checked>
+      <label for="showShortcuts">Show shortcuts</label>
+    </div>
+
+    <div class="field">
+      <label>Shortcut 1 — Google</label>
+      <input id="name0" maxlength="20" value="Google" placeholder="Shortcut name">
+      <input id="url0" type="url" value="https://www.google.com" placeholder="https://website.com">
+    </div>
+    <div class="field">
+      <label>Shortcut 2 — YouTube</label>
+      <input id="name1" maxlength="20" value="YouTube" placeholder="Shortcut name">
+      <input id="url1" type="url" value="https://www.youtube.com" placeholder="https://website.com">
+    </div>
+    <div class="field">
+      <label>Shortcut 3 — Facebook</label>
+      <input id="name2" maxlength="20" value="Facebook" placeholder="Shortcut name">
+      <input id="url2" type="url" value="https://www.facebook.com" placeholder="https://website.com">
+    </div>
+    <div class="field">
+      <label>Shortcut 4 — Instagram</label>
+      <input id="name3" maxlength="20" value="Instagram" placeholder="Shortcut name">
+      <input id="url3" type="url" value="https://www.instagram.com" placeholder="https://website.com">
+    </div>
+
+    <div class="actions">
+      <button class="action" onclick="closeEditor()" type="button">Cancel</button>
+      <button class="action save" onclick="saveSettings()" type="button">Save Settings</button>
+    </div>
+    <button class="action" style="width:100%;margin-top:10px" onclick="resetSettings()" type="button">Reset Home Screen</button>
+  </div>
+</div>
+
+<script>
+const defaults = {
+  logoText:"NovaX", tagText:"Your world. Your browser.",
+  logoColor:"#ffffff", accentColor:"#38bdf8",
+  bgColor:"#080d18", searchColor:"#ffffff",
+  logoSize:"52", radius:"28", hintText:"Search the web...",
+  wallpaperUrl:"", showTag:true, showShortcuts:true,
+  names:["Google","YouTube","Facebook","Instagram"],
+  urls:["https://www.google.com","https://www.youtube.com",
+        "https://www.facebook.com","https://www.instagram.com"]
+};
+let settings = {...defaults};
+
+function validUrl(value){
+  try { const u=new URL(value); return u.protocol==="https:" || u.protocol==="http:"; }
+  catch(_){ return false; }
+}
+function safeText(value,max){
+  return String(value||"").trim().slice(0,max);
+}
+function applySettings(){
+  const root=document.documentElement;
+  root.style.setProperty("--bg",settings.bgColor);
+  root.style.setProperty("--accent",settings.accentColor);
+  root.style.setProperty("--logo",settings.logoColor);
+  root.style.setProperty("--search",settings.searchColor);
+  root.style.setProperty("--radius",settings.radius+"px");
+
+  const logo=document.getElementById("logo");
+  logo.textContent=settings.logoText;
+  logo.style.fontSize=settings.logoSize+"px";
+  logo.style.color=settings.logoColor;
+
+  const tag=document.getElementById("tagline");
+  tag.textContent=settings.tagText;
+  tag.classList.toggle("hidden",!settings.showTag);
+
+  document.getElementById("query").placeholder=settings.hintText;
+  document.getElementById("shortcuts").classList.toggle("hidden",!settings.showShortcuts);
+
+  document.body.style.backgroundImage =
+    settings.wallpaperUrl && validUrl(settings.wallpaperUrl)
+    ? "url("+JSON.stringify(settings.wallpaperUrl)+")" : "none";
+
+  const links=document.querySelectorAll("#shortcuts .shortcut");
+  links.forEach((link,i)=>{
+    link.href=settings.urls[i]||"#";
+    link.querySelector(".label").textContent=settings.names[i]||("Shortcut "+(i+1));
+    link.querySelector(".icon").textContent=(settings.names[i]||"N").trim().charAt(0).toUpperCase();
+  });
+}
+function loadSettings(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("novax_home_settings")||"null");
+    if(saved) settings={...defaults,...saved};
+  }catch(_){}
+  applySettings();
+}
+function openCustomizer(){
+  const fields={
+    logoText:settings.logoText,tagText:settings.tagText,
+    logoColor:settings.logoColor,accentColor:settings.accentColor,
+    bgColor:settings.bgColor,searchColor:settings.searchColor,
+    logoSize:settings.logoSize,radius:settings.radius,
+    hintText:settings.hintText,wallpaperUrl:settings.wallpaperUrl
+  };
+  Object.keys(fields).forEach(k=>document.getElementById(k).value=fields[k]);
+  document.getElementById("showTag").checked=settings.showTag;
+  document.getElementById("showShortcuts").checked=settings.showShortcuts;
+  for(let i=0;i<4;i++){
+    document.getElementById("name"+i).value=settings.names[i]||"";
+    document.getElementById("url"+i).value=settings.urls[i]||"";
+  }
+  document.getElementById("editor").classList.add("open");
+}
+function requestCustomize(){
+  if(window.NovaX && typeof NovaX.requestCustomization==="function"){
+    NovaX.requestCustomization();
+  }else{
+    alert("Home customization will be enabled when connected to NovaX Browser.");
+  }
+}
+function closeEditor(){document.getElementById("editor").classList.remove("open");}
+function saveSettings(){
+  const next={...settings};
+  ["logoText","tagText","logoColor","accentColor","bgColor","searchColor",
+   "logoSize","radius","hintText","wallpaperUrl"].forEach(k=>{
+     next[k]=document.getElementById(k).value;
+   });
+  next.logoText=safeText(next.logoText,32)||"NovaX";
+  next.tagText=safeText(next.tagText,60);
+  next.hintText=safeText(next.hintText,60)||"Search the web...";
+  next.wallpaperUrl=safeText(next.wallpaperUrl,1500);
+  if(next.wallpaperUrl && !validUrl(next.wallpaperUrl)){
+    alert("Please enter a valid http:// or https:// image URL.");return;
+  }
+  next.showTag=document.getElementById("showTag").checked;
+  next.showShortcuts=document.getElementById("showShortcuts").checked;
+  next.names=[];next.urls=[];
+  for(let i=0;i<4;i++){
+    next.names.push(safeText(document.getElementById("name"+i).value,20)||("Shortcut "+(i+1)));
+    let u=safeText(document.getElementById("url"+i).value,1500);
+    if(!validUrl(u)){alert("Shortcut "+(i+1)+" needs a valid http:// or https:// URL.");return;}
+    next.urls.push(u);
+  }
+  settings=next;
+  try{localStorage.setItem("novax_home_settings",JSON.stringify(settings));}
+  catch(_){alert("Could not save settings on this device.");return;}
+  applySettings();closeEditor();
+}
+function resetSettings(){
+  if(!confirm("Reset all Home Screen customization?"))return;
+  settings={...defaults,names:[...defaults.names],urls:[...defaults.urls]};
+  try{localStorage.removeItem("novax_home_settings");}catch(_){}
+  applySettings();closeEditor();
+}
+document.getElementById("searchForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  const q=document.getElementById("query").value.trim();
+  if(!q)return;
+  window.location.href="https://www.google.com/search?q="+encodeURIComponent(q);
+});
+document.getElementById("editor").addEventListener("click",function(e){
+  if(e.target===this)closeEditor();
+});
+loadSettings();
+</script>
+</body>
+</html>
