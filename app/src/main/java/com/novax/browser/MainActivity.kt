@@ -1263,7 +1263,7 @@ private val fileUploadPicker = registerForActivityResult(
 
 
 
-    private fun openMediaDownloader(wv: WebView) {
+    private fun openMediaDownloader(wv: WebView, selectAll: Boolean = false) {
         if (!isPremiumActive() && !isAdmin()) {
             showRewardedUnlock()
             return
@@ -1309,7 +1309,7 @@ private val fileUploadPicker = registerForActivityResult(
                     val item = items.getJSONObject(i)
                     "${item.optString("type")} — ${item.optString("label")}"
                 }
-                val selected = BooleanArray(items.length())
+                val selected = BooleanArray(items.length()) { selectAll }
                 AlertDialog.Builder(this)
                     .setTitle("Premium Media Downloader")
                     .setMultiChoiceItems(labels, selected) { _, which, checked ->
@@ -1318,7 +1318,7 @@ private val fileUploadPicker = registerForActivityResult(
                     .setNeutralButton("Select All") { _, _ ->
                         for (i in selected.indices) selected[i] = true
                         Toast.makeText(this, "फिर Downloader खोलकर फाइलें चुनें", Toast.LENGTH_SHORT).show()
-                        openMediaDownloader(wv)
+                        openMediaDownloader(wv, true)
                     }
                     .setPositiveButton("Download Selected") { _, _ ->
                         var count = 0
