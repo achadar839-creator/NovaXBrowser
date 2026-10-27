@@ -329,7 +329,7 @@ private val fileUploadPicker = registerForActivityResult(
                             return JSON.stringify({
                                 playing: false,
                                 title: document.title,
-                                url: location.href,
+                                url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
                                 found: false
                             });
                         }
@@ -348,7 +348,7 @@ private val fileUploadPicker = registerForActivityResult(
                         return JSON.stringify({
                             playing: !m.paused && !m.ended,
                             title: document.title,
-                            url: location.href,
+                            url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
                             found: true
                         });
                     })()"""
@@ -375,6 +375,14 @@ private val fileUploadPicker = registerForActivityResult(
                                     putExtra(
                                         BackgroundPlayService.EXTRA_PLAYING,
                                         json.optBoolean("playing", false)
+                                    )
+                                    putExtra(
+                                        "novax_media_duration",
+                                        (json.optDouble("duration", 0.0) * 1000).toLong()
+                                    )
+                                    putExtra(
+                                        "novax_media_position",
+                                        (json.optDouble("position", 0.0) * 1000).toLong()
                                     )
                                 }
                                 startService(update)
