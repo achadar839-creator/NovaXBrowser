@@ -38,6 +38,9 @@ class BackgroundPlayService : Service() {
     private var artworkBitmap: Bitmap? = null
     private var currentDuration: Long = -1L
     private var currentPosition: Long = 0L
+    private var currentMediaUrl: String = ""
+    private var currentTitle: String = "Infer Browser Audio"
+    private var isCurrentlyPlaying: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -75,42 +78,55 @@ class BackgroundPlayService : Service() {
             }
         }
 
-        val title = intent?.getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() } ?: "Playing Media"
-        val mediaUrl = intent?.getStringExtra(EXTRA_URL).orEmpty()
+        val newTitle = intent?.getStringExtra(EXTRA_TITLE)
+        val newUrl = intent?.getStringExtra(EXTRA_URL)
         val prefs = getSharedPreferences("novax_audio_state", MODE_PRIVATE)
 
-        val playing = if (intent?.hasExtra(EXTRA_PLAYING) == true) {
-            intent.getBooleanExtra(EXTRA_PLAYING, false).also { prefs.edit().putBoolean("playing", it).apply() }
+        // नया वीडियो आते ही पुराना थंबनेल तुरंत डिलीट करना
+        if (newUrl != null && newUrl.isNotBlank() && newUrl != currentMediaUrl) {
+            currentMediaUrl = newUrl
+            artworkBitmap = null 
+        }
+
+        if (newTitle != null && newTitle.isNotBlank() && newTitle != "Infer Browser Audio") {
+            currentTitle = newTitle
+        }
+
+        // स्ट्रिक्ट प्ले/पॉज़ स्टेट
+        if (intent?.hasExtra(EXTRA_PLAYING) == true) {
+            isCurrentlyPlaying = intent.getBooleanExtra(EXTRA_PLAYING, false)
+            prefs.edit().putBoolean("playing", isCurrentlyPlaying).apply()
         } else {
-            prefs.getBoolean("playing", true)
+            isCurrentlyPlaying = prefs.getBoolean("playing", true)
         }
 
         if (intent?.hasExtra(EXTRA_DURATION) == true) currentDuration = intent.getLongExtra(EXTRA_DURATION, -1L)
         if (intent?.hasExtra(EXTRA_POSITION) == true) currentPosition = intent.getLongExtra(EXTRA_POSITION, 0L)
 
-        updateNotification(title, playing, currentDuration, currentPosition)
+        updateNotification()
 
-        if (artworkBitmap == null && mediaUrl.isNotBlank()) {
+        // नई फोटो डाउनलोड करना
+        if (artworkBitmap == null && currentMediaUrl.isNotBlank()) {
             thread {
-                val newArtwork = loadArtwork(mediaUrl)
+                val newArtwork = loadArtwork(currentMediaUrl)
                 if (newArtwork != null) {
                     artworkBitmap = newArtwork
-                    updateNotification(title, playing, currentDuration, currentPosition)
+                    updateNotification()
                 }
             }
         }
         return START_STICKY
     }
 
-    private fun updateNotification(title: String, playing: Boolean, duration: Long, position: Long) {
-        val playPauseIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
-        val playPauseTitle = if (playing) "Pause" else "Play"
+    private fun updateNotification() {
+        val playPauseIcon = if (isCurrentlyPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val playPauseTitle = if (isCurrentlyPlaying) "Pause" else "Play"
 
         mediaSession?.setMetadata(
             MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "Infer Browser")
-                .apply { if (duration > 0) putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration) }
+                .apply { if (currentDuration > 0) putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration) }
                 .apply { artworkBitmap?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build()
         )
@@ -118,7 +134,7 @@ class BackgroundPlayService : Service() {
         mediaSession?.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, position, if (playing) 1f else 0f)
+                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f)
                 .build()
         )
 
@@ -135,12 +151,12 @@ class BackgroundPlayService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(title)
+            .setContentTitle(currentTitle)
             .setContentText("Infer Browser")
             .setLargeIcon(artworkBitmap)
             .setContentIntent(openPending)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(playing)
+            .setOngoing(isCurrentlyPlaying)
             .addAction(android.R.drawable.ic_media_previous, "Prev", actionPending(ACTION_PREVIOUS, 1))
             .addAction(playPauseIcon, playPauseTitle, actionPending(ACTION_PLAY_PAUSE, 2))
             .addAction(android.R.drawable.ic_media_next, "Next", actionPending(ACTION_NEXT, 3))
