@@ -831,11 +831,12 @@ private val fileUploadPicker = registerForActivityResult(
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
                         (function() {
-                            if(window.novaxAdKiller) return;
-                            window.novaxAdKiller = true;
-                            var s = document.createElement('style');
-                            s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, .ytp-ad-persistent-progress-bar { display: none !important; }';
-                            document.head.appendChild(s);
+                            if (!document.getElementById('novax-premium-adblock')) {
+                                var s = document.createElement('style');
+                                s.id = 'novax-premium-adblock';
+                                                            s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, .ytp-ad-persistent-progress-bar { display: none !important; }';
+                                document.head.appendChild(s);
+                            }
                             setInterval(function() {
                                 var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
                                 if(btn) { btn.click(); }
@@ -866,7 +867,8 @@ private val fileUploadPicker = registerForActivityResult(
                 if (view != null && !url.isNullOrBlank() &&
                     (url.contains("google.com") || url == "about:blank")) {
                     view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                    view.evaluateJavascript("(function(){ var s=document.createElement('style'); s.innerHTML='#fbar, div[role=\'contentinfo\'], g-trending-searches, .k1zIA, .FveGne, .Q3DXx, .Sr5xc, .Svr5cf { display:none !important; }'; document.head.appendChild(s); })();", null)
+                                document.head.appendChild(s);
+                            }
                     view.evaluateJavascript(
                         "(function(){document.documentElement.style.setProperty('background','transparent','important');if(document.body)document.body.style.setProperty('background','transparent','important');})();",
                         null
