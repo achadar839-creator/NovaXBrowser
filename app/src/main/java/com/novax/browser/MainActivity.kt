@@ -820,6 +820,60 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
+                    // एड-ब्लॉकर (सिर्फ प्रीमियम होने पर 1ms में उड़ाएगा)
+                    if (isPremiumActive()) {
+                        view?.evaluateJavascript("""
+                        (function() {
+                            var style = document.createElement('style');
+                            style.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, .ytp-ad-message-overlay { display: none !important; }';
+                            if(!document.getElementById('novax-premium-adblock')) {
+                                style.id = 'novax-premium-adblock';
+                                document.head.appendChild(style);
+                            }
+                            setInterval(function() {
+                                var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
+                                if(btn) btn.click();
+                                var vid = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video');
+                                if(vid && document.querySelector('.ytp-ad-player-overlay') && !isNaN(vid.duration)) {
+                                    vid.currentTime = vid.duration;
+                                }
+                            }, 1);
+                        })();
+                        """, null)
+                    }
+
+                    // फ्लोटिंग डाउनलोडर और मीडिया सिंक
+                    view?.evaluateJavascript("""
+                    (function() {
+                        setInterval(function() {
+                            if(!window.location.href.includes('youtube.com') && !window.location.href.includes('youtu.be')) {
+                                var oldBtn = document.getElementById('novax-float-dl');
+                                if(oldBtn) oldBtn.style.display = 'none';
+                                return;
+                            }
+                            var btn = document.getElementById('novax-float-dl');
+                            if(!btn) {
+                                btn = document.createElement('div');
+                                btn.id = 'novax-float-dl';
+                                btn.innerHTML = '📥 Download MP3/MP4';
+                                btn.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:999999; background:rgba(10,13,20,0.8); backdrop-filter:blur(10px); border:1px solid #00ffcc; color:#fff; padding:10px 15px; border-radius:25px; font-weight:bold; cursor:pointer;';
+                                btn.onclick = function() { window.location.href = 'https://ssyoutube.com/en177/?url=' + encodeURIComponent(window.location.href); };
+                                document.body.appendChild(btn);
+                            } else {
+                                btn.style.display = 'block';
+                            }
+                        }, 1000);
+
+                        /* मीडिया सिंक फिक्स */
+                        var lastUrl = location.href;
+                        setInterval(function() {
+                            if(location.href !== lastUrl) {
+                                lastUrl = location.href;
+                                setTimeout(function(){ document.title = document.title + ' '; }, 150);
+                            }
+                        }, 1000);
+                    })();
+                    """, null)
                     view?.evaluateJavascript("""
                     (function() {
                         /* 1. ULTRA-FAST 1ms AD SKIPPER */
@@ -1313,12 +1367,16 @@ private val fileUploadPicker = registerForActivityResult(
                             setStroke(3, android.graphics.Color.parseColor("#66FFFFFF"))
                         }
                         setOnClickListener {
-                            try {
-                                val et = findViewById<android.widget.EditText>(R.id.etUrl)
-                                et?.requestFocus()
-                                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                                imm?.showSoftInput(et, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                            } catch (e: Exception) {}
+                            val et = findViewById<android.widget.EditText>(R.id.etUrl)
+                            if (et != null) {
+                                et.requestFocus()
+                                et.postDelayed({
+                                    try {
+                                        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                                        imm.showSoftInput(et, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                                    } catch(e: Exception) {}
+                                }, 100)
+                            }
                         }
                         textSize = 15f
                         setTextColor(android.graphics.Color.parseColor("#EEEEEE"))
