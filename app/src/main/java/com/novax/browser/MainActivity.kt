@@ -1262,6 +1262,100 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
+
+    private fun openMediaDownloader(wv: WebView) {
+        if (!isPremiumActive() && !isAdmin()) {
+            showRewardedUnlock()
+            return
+        }
+
+        val script = """
+            (function() {
+              const found = [];
+              const add = (url, label, type) => {
+                try {
+                  const u = new URL(url, location.href);
+                  if (!['http:', 'https:'].includes(u.protocol)) return;
+                  if (/\.(m3u8|mpd)(?:$|[?#])/i.test(u.href)) return;
+                  if (!found.some(x => x.url === u.href))
+                    found.push({url:u.href,label:(label || type).slice(0,100),type:type});
+                } catch(e) {}
+              };
+              document.querySelectorAll('video,audio,source').forEach(e => {
+                if (e.src) add(e.src, e.getAttribute('title') || e.getAttribute('aria-label') || e.src.split('/').pop(), e.tagName.toLowerCase());
+                if (e.currentSrc) add(e.currentSrc, e.currentSrc.split('/').pop(), e.tagName.toLowerCase());
+              });
+              document.querySelectorAll('img').forEach(e => {
+                if (e.currentSrc || e.src) add(e.currentSrc || e.src, e.alt || 'Image', 'image');
+              });
+              document.querySelectorAll('a[href]').forEach(e => {
+                if (/\.(mp4|webm|mov|m4v|mp3|m4a|aac|ogg|wav|flac|jpg|jpeg|png|webp|gif|avif)(?:$|[?#])/i.test(e.href))
+                  add(e.href, e.innerText.trim() || e.href.split('/').pop(), 'file');
+              });
+              return JSON.stringify(found);
+            })();
+        """.trimIndent()
+
+        wv.evaluateJavascript(script) { raw ->
+            try {
+                val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
+                val items = org.json.JSONArray(decoded as? String ?: "[]")
+                if (items.length() == 0) {
+                    Toast.makeText(this, "इस पेज पर सीधे डाउनलोड होने वाली मीडिया फाइल नहीं मिली", Toast.LENGTH_LONG).show()
+                    return@evaluateJavascript
+                }
+
+                val labels = Array(items.length()) { i ->
+                    val item = items.getJSONObject(i)
+                    "${item.optString("type")} — ${item.optString("label")}"
+                }
+                val selected = BooleanArray(items.length())
+                AlertDialog.Builder(this)
+                    .setTitle("Premium Media Downloader")
+                    .setMultiChoiceItems(labels, selected) { _, which, checked ->
+                        selected[which] = checked
+                    }
+                    .setNeutralButton("Select All") { _, _ ->
+                        for (i in selected.indices) selected[i] = true
+                        Toast.makeText(this, "फिर Downloader खोलकर फाइलें चुनें", Toast.LENGTH_SHORT).show()
+                        openMediaDownloader(wv)
+                    }
+                    .setPositiveButton("Download Selected") { _, _ ->
+                        var count = 0
+                        for (i in selected.indices) {
+                            if (!selected[i]) continue
+                            val item = items.getJSONObject(i)
+                            val url = item.optString("url")
+                            try {
+                                val request = android.app.DownloadManager.Request(Uri.parse(url))
+                                val cookies = CookieManager.getInstance().getCookie(url)
+                                if (!cookies.isNullOrBlank()) request.addRequestHeader("Cookie", cookies)
+                                request.addRequestHeader("User-Agent", wv.settings.userAgentString)
+                                request.addRequestHeader("Referer", wv.url ?: url)
+                                val name = URLUtil.guessFileName(url, null, null)
+                                request.setTitle(name)
+                                request.setDescription("NovaXPro Media Downloader")
+                                request.setNotificationVisibility(
+                                    android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                )
+                                request.setDestinationInExternalPublicDir(
+                                    android.os.Environment.DIRECTORY_DOWNLOADS, name
+                                )
+                                val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                                manager.enqueue(request)
+                                count++
+                            } catch (_: Exception) {}
+                        }
+                        Toast.makeText(this, "डाउनलोड शुरू: $count फाइलें", Toast.LENGTH_LONG).show()
+                    }
+                    .setNegativeButton("बंद करें", null)
+                    .show()
+            } catch (_: Exception) {
+                Toast.makeText(this, "मीडिया सूची पढ़ने में समस्या हुई", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun showWebsiteTools() {
         val wv = tabs.getOrNull(currentTabIndex)
         if (wv == null) {
@@ -1274,7 +1368,8 @@ private val fileUploadPicker = registerForActivityResult(
             "वेबसाइट की जानकारी",
             "टेक्स्ट बड़ा करें",
             "टेक्स्ट छोटा करें",
-            "पेज रीफ़्रेश करें"
+            "पेज रीफ़्रेश करें",
+            "👑 Premium Media Downloader"
         )
         AlertDialog.Builder(this)
             .setTitle("Website Tools")
@@ -1294,6 +1389,13 @@ private val fileUploadPicker = registerForActivityResult(
                         wv.settings.textZoom = websiteTextZoom
                     }
                     3 -> wv.reload()
+                    4 -> {
+                        if (isPremiumActive() || isAdmin()) {
+                            openMediaDownloader(wv)
+                        } else {
+                            showRewardedUnlock()
+                        }
+                    }
                 }
             }
             .setNegativeButton("बंद करें", null)
