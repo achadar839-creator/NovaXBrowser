@@ -311,7 +311,7 @@ private val fileUploadPicker = registerForActivityResult(
                     startService(update)
                 } else {
                     tab.evaluateJavascript(
-                        "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused)||a.find(x=>x.readyState>0);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});if(m.paused){var p=m.play();if(p&&p.catch)p.catch(function(){});}else{m.pause();}return JSON.stringify({playing:!m.paused,title:document.title,url:location.href});})()"
+                        "(function(){var a=Array.from(document.querySelectorAll('video,audio'));var m=a.find(x=>!x.paused&&!x.ended)||a.find(x=>x.readyState>0&&!x.ended);if(!m)return JSON.stringify({playing:false,title:document.title,url:location.href});function state(){return JSON.stringify({playing:!m.paused&&!m.ended,title:document.title,url:location.href});}if(m.paused){try{return m.play().then(function(){return state();}).catch(function(){return state();});}catch(e){return state();}}m.pause();return state();})()"
                     ) { raw ->
                         try {
                             val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
