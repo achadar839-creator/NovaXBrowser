@@ -874,55 +874,6 @@ private val fileUploadPicker = registerForActivityResult(
                         }, 1000);
                     })();
                     """, null)
-                    view?.evaluateJavascript("""
-                    (function() {
-                        /* 1. ULTRA-FAST 1ms AD SKIPPER */
-                        var adStyle = document.createElement('style');
-                        adStyle.innerHTML = '.ad-showing video, .ad-showing .html5-video-container { opacity: 0 !important; pointer-events: none !important; width: 0px !important; height: 0px !important; } .ytp-ad-player-overlay, .ytp-ad-image-overlay, .ytp-ad-message-overlay { display: none !important; }';
-                        if(!document.getElementById('novax-ad-style')) {
-                            adStyle.id = 'novax-ad-style';
-                            document.head.appendChild(adStyle);
-                        }
-                        setInterval(function() {
-                            var skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern');
-                            if(skipBtn) skipBtn.click();
-                            var vid = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video');
-                            if(vid && document.querySelector('.ytp-ad-player-overlay') && !isNaN(vid.duration)) {
-                                vid.currentTime = vid.duration;
-                            }
-                        }, 1);
-
-                        /* 2. FLOATING LIQUID GLASS DOWNLOADER */
-                        setInterval(function() {
-                            if(!window.location.href.includes('youtube.com') && !window.location.href.includes('youtu.be')) {
-                                var oldBtn = document.getElementById('novax-float-dl');
-                                if(oldBtn) oldBtn.style.display = 'none';
-                                return;
-                            }
-                            var btn = document.getElementById('novax-float-dl');
-                            if(!btn) {
-                                btn = document.createElement('div');
-                                btn.id = 'novax-float-dl';
-                                btn.innerHTML = '📥 Download MP3 / MP4';
-                                btn.style.cssText = 'position:fixed; bottom:120px; right:15px; z-index:9999999; background:rgba(10,13,20,0.7); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:2px solid rgba(255,255,255,0.3); color:#ffffff; padding:12px 20px; border-radius:30px; font-weight:bold; box-shadow:0 8px 32px rgba(0,0,0,0.5); cursor:pointer; text-align:center; transition:0.2s;';
-                                setInterval(function(){ btn.style.borderColor = 'hsl(' + (Date.now()/20 % 360) + ', 100%, 65%)'; }, 50);
-                                btn.onclick = function(){ window.location.href = 'https://ssyoutube.com/en177/?url=' + encodeURIComponent(window.location.href); };
-                                document.body.appendChild(btn);
-                            } else {
-                                btn.style.display = 'block';
-                            }
-                        }, 1000);
-
-                        /* 3. MEDIA SYNC FIX */
-                        var lastUrl = location.href;
-                        setInterval(function() {
-                            if(location.href !== lastUrl) {
-                                lastUrl = location.href;
-                                setTimeout(function(){ document.title = document.title + ' '; }, 150);
-                            }
-                        }, 1000);
-                    })();
-                    """, null)
                 // novax_transparent_home_wallpaper
                 if (view != null && !url.isNullOrBlank() &&
                     (url.contains("google.com") || url == "about:blank")) {
@@ -1367,16 +1318,7 @@ private val fileUploadPicker = registerForActivityResult(
                             setStroke(3, android.graphics.Color.parseColor("#66FFFFFF"))
                         }
                         setOnClickListener {
-                            val et = findViewById<android.widget.EditText>(R.id.etUrl)
-                            if (et != null) {
-                                et.requestFocus()
-                                et.postDelayed({
-                                    try {
-                                        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-                                        imm.showSoftInput(et, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                                    } catch(e: Exception) {}
-                                }, 100)
-                            }
+                            createNewTab("https://www.google.com")
                         }
                         textSize = 15f
                         setTextColor(android.graphics.Color.parseColor("#EEEEEE"))
