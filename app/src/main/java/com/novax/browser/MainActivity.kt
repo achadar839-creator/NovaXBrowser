@@ -1272,26 +1272,58 @@ private val fileUploadPicker = registerForActivityResult(
         val script = """
             (function() {
               const found = [];
-              const add = (url, label, type) => {
+              const videoExt = /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i;
+              const audioExt = /\.(mp3|m4a|aac|ogg|wav|flac|opus)(?:$|[?#])/i;
+              const imageExt = /\.(jpg|jpeg|png|webp|gif|avif|bmp)(?:$|[?#])/i;
+
+              function add(rawUrl, label, kind) {
                 try {
-                  const u = new URL(url, location.href);
+                  const u = new URL(rawUrl, location.href);
                   if (!['http:', 'https:'].includes(u.protocol)) return;
-                  if (/\.(m3u8|mpd)(?:$|[?#])/i.test(u.href)) return;
-                  if (!found.some(x => x.url === u.href))
-                    found.push({url:u.href,label:(label || type).slice(0,100),type:type});
+                  if (/\.(m3u8|mpd|ts)(?:$|[?#])/i.test(u.href)) return;
+
+                  let type = kind || '';
+                  if (videoExt.test(u.href)) type = 'VIDEO';
+                  else if (audioExt.test(u.href)) type = 'AUDIO';
+                  else if (imageExt.test(u.href)) type = 'IMAGE';
+                  if (!type || type === 'MEDIA') return;
+
+                  if (type === 'IMAGE') {
+                    if (location.hostname.includes('youtube.com') &&
+                        (u.hostname.includes('ytimg.com') || u.hostname.includes('googleusercontent.com'))) return;
+                  }
+
+                  if (!found.some(x => x.url === u.href)) {
+                    found.push({
+                      url: u.href,
+                      label: (label || u.pathname.split('/').pop() || type).slice(0, 100),
+                      type: type
+                    });
+                  }
                 } catch(e) {}
-              };
-              document.querySelectorAll('video,audio,source').forEach(e => {
-                if (e.src) add(e.src, e.getAttribute('title') || e.getAttribute('aria-label') || e.src.split('/').pop(), e.tagName.toLowerCase());
-                if (e.currentSrc) add(e.currentSrc, e.currentSrc.split('/').pop(), e.tagName.toLowerCase());
+              }
+
+              document.querySelectorAll('video, audio, source').forEach(e => {
+                const parent = e.closest('video, audio');
+                const tag = (parent || e).tagName.toLowerCase();
+                const kind = tag === 'video' ? 'VIDEO' : tag === 'audio' ? 'AUDIO' : '';
+                if (e.currentSrc) add(e.currentSrc, e.getAttribute('title') || e.currentSrc.split('/').pop(), kind);
+                if (e.src) add(e.src, e.getAttribute('title') || e.src.split('/').pop(), kind);
               });
-              document.querySelectorAll('img').forEach(e => {
-                if (e.currentSrc || e.src) add(e.currentSrc || e.src, e.alt || 'Image', 'image');
-              });
+
               document.querySelectorAll('a[href]').forEach(e => {
-                if (/\.(mp4|webm|mov|m4v|mp3|m4a|aac|ogg|wav|flac|jpg|jpeg|png|webp|gif|avif)(?:$|[?#])/i.test(e.href))
-                  add(e.href, e.innerText.trim() || e.href.split('/').pop(), 'file');
+                const u = e.href;
+                if (videoExt.test(u) || audioExt.test(u) || imageExt.test(u)) {
+                  add(u, e.innerText.trim() || u.split('/').pop(), '');
+                }
               });
+
+              document.querySelectorAll('img').forEach(e => {
+                const u = e.currentSrc || e.src;
+                if (!u || e.naturalWidth < 160 || e.naturalHeight < 90) return;
+                add(u, e.alt || u.split('/').pop() || 'Image', 'IMAGE');
+              });
+
               return JSON.stringify(found);
             })();
         """.trimIndent()
