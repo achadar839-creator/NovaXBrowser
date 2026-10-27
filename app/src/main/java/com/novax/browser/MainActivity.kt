@@ -824,6 +824,7 @@ private val fileUploadPicker = registerForActivityResult(
                 if (view != null && !url.isNullOrBlank() &&
                     (url.contains("google.com") || url == "about:blank")) {
                     view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    view.evaluateJavascript("(function(){ var s=document.createElement('style'); s.innerHTML='#fbar, div[role=\'contentinfo\'], g-trending-searches, .k1zIA, .FveGne, .Q3DXx, .Sr5xc, .Svr5cf { display:none !important; }'; document.head.appendChild(s); })();", null)
                     view.evaluateJavascript(
                         "(function(){document.documentElement.style.setProperty('background','transparent','important');if(document.body)document.body.style.setProperty('background','transparent','important');})();",
                         null
