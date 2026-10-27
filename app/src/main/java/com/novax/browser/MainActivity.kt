@@ -1751,7 +1751,7 @@ override fun onDestroy() {
                 Toast.makeText(this, "पहले Pin Audio दबाएँ", Toast.LENGTH_SHORT).show()
             } else {
                 musicTab.evaluateJavascript(
-                    "(function(){var media=document.querySelectorAll('audio,video');var playing=false;media.forEach(function(m){if(!m.paused){m.pause();}else{m.play().catch(function(){});playing=true;}});return playing;})()",
+                    "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;});if(m){m.pause();return 'paused';}m=a.find(function(x){return x.readyState>0&&!x.ended;})||a.find(function(x){return !x.ended;});if(m){var p=m.play();if(p&&p.catch)p.catch(function(){});return 'playing';}return 'no-media';})()",
                     null
                 )
                 Toast.makeText(this, "Play/Pause अनुरोध भेजा गया", Toast.LENGTH_SHORT).show()
