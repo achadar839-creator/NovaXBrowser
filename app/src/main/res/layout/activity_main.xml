@@ -82,7 +82,7 @@
             android:layout_width="36dp"
             android:layout_height="32dp"
             android:text="⏪"
-            android:backgroundTint="#553FFFFFF"
+            android:backgroundTint="#55FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniNext"
@@ -90,7 +90,7 @@
             android:layout_height="32dp"
             android:layout_marginStart="2dp"
             android:text="⏩"
-            android:backgroundTint="#553FFFFFF"
+            android:backgroundTint="#55FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniPlayPause"
@@ -98,7 +98,7 @@
             android:layout_height="32dp"
             android:text="⏯️ Play"
             android:textSize="10sp"
-            android:backgroundTint="#553FFFFFF"
+            android:backgroundTint="#55FFFFFF"
             android:textColor="#FFFFFF" />
         <Button
             android:id="@+id/btnMiniClose"
