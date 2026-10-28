@@ -1940,13 +1940,7 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnQuickLinks).setOnClickListener { showQuickLinks() }
         findViewById<Button>(R.id.btnClearData).setOnClickListener { clearBrowserData() }
         findViewById<Button>(R.id.btnDownloads).setOnClickListener {
-            val tab = tabs.getOrNull(currentTabIndex)
-            val currentUrl = tab?.url ?: ""
-            if (currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtu.be/") || currentUrl.contains("youtube.com/shorts/")) {
-                Toast.makeText(this, "🚀 Fetching YouTube Premium Links...", Toast.LENGTH_SHORT).show()
-// Ghost downloader permanently removed
-            } else {
-            }
+            openDownloadsFolder()
         }
         findViewById<Button>(R.id.btnDownloads).setOnLongClickListener { openDownloadsFolder(); true }
 
@@ -2143,5 +2137,7 @@ override fun onDestroy() {
             }.show()
     }
 
+
+    private val adBlockerScript = """(function(){const s=document.createElement("style");s.innerHTML=".video-ads,.ytp-ad-module,.ytp-ad-overlay-image,#masthead-ad{display:none!important}";document.head.appendChild(s);setInterval(()=>{const b=document.querySelector(".ytp-ad-skip-button");if(b)b.click();const v=document.querySelector("video");if(v&&document.querySelector(".ad-showing")){v.playbackRate=16.0;v.muted=true;}},500);})();""".trimIndent()
+
 }
-// Force New Build Update
