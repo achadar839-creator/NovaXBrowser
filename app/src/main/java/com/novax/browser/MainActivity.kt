@@ -233,6 +233,7 @@ private val fileUploadPicker = registerForActivityResult(
                         Toast.makeText(this@MainActivity,
                             "👑 Premium unlocked for 6 hours!", Toast.LENGTH_LONG).show()
                         updateUI()
+                        findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.let { it.visibility = android.view.View.GONE; it.destroy() }
                     } else {
                         premiumPrefs.edit().putInt("completed_rewards", count).apply()
                         Toast.makeText(this@MainActivity,
@@ -1669,50 +1670,7 @@ private val fileUploadPicker = registerForActivityResult(
         }
     }
 
-    private fun showWebsiteTools() {
-        val wv = tabs.getOrNull(currentTabIndex)
-        if (wv == null) {
-            Toast.makeText(this, "कोई वेबसाइट खुली नहीं है", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val title = wv.title ?: "शीर्षक उपलब्ध नहीं"
-        val url = wv.url ?: "URL उपलब्ध नहीं"
-        val options = arrayOf(
-            "वेबसाइट की जानकारी",
-            "टेक्स्ट बड़ा करें",
-            "टेक्स्ट छोटा करें",
-            "पेज रीफ़्रेश करें",
-            "👑 Premium Media Downloader"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("Website Tools")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> AlertDialog.Builder(this)
-                        .setTitle("Website Info")
-                        .setMessage("Title: $title\n\nURL: $url")
-                        .setPositiveButton("ठीक है", null)
-                        .show()
-                    1 -> {
-                        websiteTextZoom = (websiteTextZoom + 10).coerceAtMost(200)
-                        wv.settings.textZoom = websiteTextZoom
-                    }
-                    2 -> {
-                        websiteTextZoom = (websiteTextZoom - 10).coerceAtLeast(50)
-                        wv.settings.textZoom = websiteTextZoom
-                    }
-                    3 -> wv.reload()
-                    4 -> {
-                        if (isPremiumActive() || isAdmin()) {
-                        } else {
-                            showRewardedUnlock()
-                        }
-                    }
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
+    
 
 
     private fun saveBrowserSession() {
@@ -1938,7 +1896,7 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnSharePage).setOnClickListener { shareCurrentPage() }
         findViewById<Button>(R.id.btnSearchEngine).setOnClickListener { showSearchEngineSelector() }
         loadSearchEnginePreference()
-        findViewById<Button>(R.id.btnWebsiteTools).setOnClickListener { showWebsiteTools() }
+        
         findViewById<Button>(R.id.btnDesktopMode).setOnClickListener { toggleDesktopMode() }
         findViewById<Button>(R.id.btnQuickLinks).setOnClickListener { showQuickLinks() }
         findViewById<Button>(R.id.btnClearData).setOnClickListener { clearBrowserData() }
