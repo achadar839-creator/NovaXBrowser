@@ -1,4 +1,5 @@
 package com.novax.browser
+var globalLastDownloadTime = 0L
 
 import android.content.Context
 import android.content.Intent
@@ -564,6 +565,8 @@ private val fileUploadPicker = registerForActivityResult(
         wv.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         wv.settings.javaScriptEnabled = true
         wv.settings.mediaPlaybackRequiresUserGesture = false
+        wv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+        wv.settings.mediaPlaybackRequiresUserGesture = false
         wv.settings.domStorageEnabled = true
         wv.settings.allowFileAccess = false
         wv.settings.allowContentAccess = true
@@ -696,6 +699,9 @@ private val fileUploadPicker = registerForActivityResult(
         }
 
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - globalLastDownloadTime < 2000) return@setDownloadListener
+                globalLastDownloadTime = currentTime
             try {
                 val downloadUri = Uri.parse(url)
                 if (downloadUri.scheme !in listOf("http", "https")) {
@@ -793,6 +799,9 @@ private val fileUploadPicker = registerForActivityResult(
                 return false
             }
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val adUrl = request?.url?.toString()?.lowercase() ?: ""
+                val adServers = listOf("doubleclick.net", "googleadservices.com", "googlesyndication.com", "adservice.google.com", "amazon-adsystem.com", "popads.net", "adform.net")
+                if (adServers.any { adUrl.contains(it) }) return WebResourceResponse("text/plain", "UTF-8", null)
                     // novax_tracker_filter
                     val requestUrl = request?.url
                     val requestHost = requestUrl?.host?.lowercase().orEmpty()
@@ -827,6 +836,7 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
+                view?.evaluateJavascript("(function() { var style = document.createElement('style'); style.innerHTML = 'iframe[src*="ads"], .ad-container, .adsbygoogle, div[id^="google_ads"] { display: none !important; }'; document.head.appendChild(style); })();", null)
                     // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
