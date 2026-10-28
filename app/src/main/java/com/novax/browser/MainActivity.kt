@@ -700,6 +700,8 @@ private val fileUploadPicker = registerForActivityResult(
 
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
                 val currentTime = System.currentTimeMillis()
+                if (currentTime - globalLastDownloadTime < 2000) return@setDownloadListener
+                globalLastDownloadTime = currentTime
             try {
                 val downloadUri = Uri.parse(url)
                 if (downloadUri.scheme !in listOf("http", "https")) {
@@ -834,6 +836,7 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
+                    view?.evaluateJavascript("(function() { var s = document.createElement('style'); s.innerHTML = '.ad-container, .adsbygoogle, div[id^=\'google_ads\'] { display: none !important; }'; document.head.appendChild(s); })();", null)
                     // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
@@ -1943,18 +1946,6 @@ override fun onDestroy() {
                 Toast.makeText(this, "🚀 Fetching YouTube Premium Links...", Toast.LENGTH_SHORT).show()
 // Ghost downloader permanently removed
             } else {
-                tab?.evaluateJavascript("(function(){ var v = document.querySelector('video'); if(v && v.src && !v.src.startsWith('blob:')) return v.src; var s = document.querySelector('video source'); if(s && s.src && !s.src.startsWith('blob:')) return s.src; var a = document.querySelector('audio'); if(a && a.src && !a.src.startsWith('blob:')) return a.src; return 'not_found'; })()") { result ->
-                    val res = result?.replace("\"", "")
-                    if (res != null && res != "not_found" && res != "null" && res.isNotBlank()) {
-                        Toast.makeText(this, "📥 Media Found! Downloading...", Toast.LENGTH_SHORT).show()
-                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(res))
-                        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        request.setTitle("Infer Browser Download")
-                        getSystemService(android.app.DownloadManager::class.java).enqueue(request)
-                    } else {
-                        Toast.makeText(this, "❌ Media link nahi mila! (Protected/Blob Video)", Toast.LENGTH_SHORT).show()
-                    }
-                }
             }
         }
         findViewById<Button>(R.id.btnDownloads).setOnLongClickListener { openDownloadsFolder(); true }
