@@ -1,5 +1,4 @@
 package com.novax.browser
-var globalLastDownloadTime = 0L
 
 import android.content.Context
 import android.content.Intent
@@ -27,6 +26,7 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
+    var globalLastDownloadTime = 0L
     private val photoPicker = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -700,8 +700,6 @@ private val fileUploadPicker = registerForActivityResult(
 
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
                 val currentTime = System.currentTimeMillis()
-                if (currentTime - globalLastDownloadTime < 2000) return@setDownloadListener
-                globalLastDownloadTime = currentTime
             try {
                 val downloadUri = Uri.parse(url)
                 if (downloadUri.scheme !in listOf("http", "https")) {
@@ -836,7 +834,6 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
-                view?.evaluateJavascript("(function() { var style = document.createElement('style'); style.innerHTML = 'iframe[src*="ads"], .ad-container, .adsbygoogle, div[id^="google_ads"] { display: none !important; }'; document.head.appendChild(style); })();", null)
                     // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
