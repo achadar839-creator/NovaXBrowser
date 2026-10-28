@@ -440,8 +440,11 @@ private val fileUploadPicker = registerForActivityResult(
         }
         loadRewardedAd()
         val bannerAd = findViewById<AdView>(R.id.adView)
-        bannerAd.visibility = if (isPremiumActive()) View.GONE else View.VISIBLE
-        if (!isPremiumActive()) {
+        if (isPremiumActive()) {
+            bannerAd.visibility = View.GONE
+            bannerAd.destroy() // अगर कोई ऐड पहले से है, तो उसे पूरी तरह खत्म कर दो
+        } else {
+            bannerAd.visibility = View.VISIBLE
             bannerAd.loadAd(AdRequest.Builder().build())
         }
 
