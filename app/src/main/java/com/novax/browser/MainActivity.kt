@@ -867,8 +867,6 @@ private val fileUploadPicker = registerForActivityResult(
                 if (view != null && !url.isNullOrBlank() &&
                     (url.contains("google.com") || url == "about:blank")) {
                     view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                document.head.appendChild(s);
-                            }
                     view.evaluateJavascript(
                         "(function(){document.documentElement.style.setProperty('background','transparent','important');if(document.body)document.body.style.setProperty('background','transparent','important');})();",
                         null
