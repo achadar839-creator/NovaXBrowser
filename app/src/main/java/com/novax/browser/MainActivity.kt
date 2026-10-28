@@ -1592,7 +1592,7 @@ private val fileUploadPicker = registerForActivityResult(
                     val item = items.getJSONObject(i)
                     "${item.optString("type")} — ${item.optString("label")}"
                 }
-                val selected = BooleanArray(items.length()) { selectAll }
+                val selected = BooleanArray(items.length()) { false }
 
                 AlertDialog.Builder(this)
                     .setTitle("Infer Browser Media Downloader")
