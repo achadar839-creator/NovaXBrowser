@@ -203,11 +203,6 @@
             android:layout_height="wrap_content"
             android:text="Desktop Mode" />
         <Button
-            android:id="@+id/btnWebsiteTools"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Website Tools" />
-        <Button
             android:id="@+id/btnSharePage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -233,7 +233,7 @@ private val fileUploadPicker = registerForActivityResult(
                         Toast.makeText(this@MainActivity,
                             "👑 Premium unlocked for 6 hours!", Toast.LENGTH_LONG).show()
                         updateUI()
-                        findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.let { it.visibility = android.view.View.GONE; it.destroy() }
+                        findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.let { ad -> ad.visibility = android.view.View.GONE; ad.destroy(); (ad.parent as? android.view.ViewGroup)?.removeView(ad) }
                     } else {
                         premiumPrefs.edit().putInt("completed_rewards", count).apply()
                         Toast.makeText(this@MainActivity,
