@@ -1487,11 +1487,7 @@ private val fileUploadPicker = registerForActivityResult(
 
 
 
-    private fun openMediaDownloader(wv: WebView, selectAll: Boolean = false) {
-        if (!isPremiumActive() && !isAdmin()) {
-            showRewardedUnlock()
-            return
-        }
+    
 
         val script = """
             (function() {
@@ -1598,7 +1594,6 @@ private val fileUploadPicker = registerForActivityResult(
                         selected[which] = checked
                     }
                     .setNeutralButton("Select All") { _, _ ->
-                        openMediaDownloader(wv, true)
                     }
                     .setPositiveButton("Download Selected") { _, _ ->
                         var count = 0
@@ -1700,7 +1695,6 @@ private val fileUploadPicker = registerForActivityResult(
                     3 -> wv.reload()
                     4 -> {
                         if (isPremiumActive() || isAdmin()) {
-                            openMediaDownloader(wv)
                         } else {
                             showRewardedUnlock()
                         }
@@ -2139,5 +2133,33 @@ override fun onDestroy() {
 
 
     private val adBlockerScript = """(function(){const s=document.createElement("style");s.innerHTML=".video-ads,.ytp-ad-module,.ytp-ad-overlay-image,#masthead-ad{display:none!important}";document.head.appendChild(s);setInterval(()=>{const b=document.querySelector(".ytp-ad-skip-button");if(b)b.click();const v=document.querySelector("video");if(v&&document.querySelector(".ad-showing")){v.playbackRate=16.0;v.muted=true;}},500);})();""".trimIndent()
+
+
+
+    private fun applyPremiumAdBlocker(view: WebView?) {
+        if (isPremiumActive()) {
+            view?.evaluateJavascript("""
+                (function() {
+                    if (!document.getElementById('novax-premium-adblock')) {
+                        var s = document.createElement('style');
+                        s.id = 'novax-premium-adblock';
+                        s.innerHTML = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-image, #masthead-ad, ytd-promoted-sparkles-web-renderer, .ad-showing { display: none !important; }';
+                        document.head.appendChild(s);
+                    }
+                    setInterval(() => {
+                        const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot');
+                        if (skipBtn) {
+                            skipBtn.click();
+                        }
+                        const video = document.querySelector('video');
+                        if (video && document.querySelector('.ad-showing')) {
+                            video.playbackRate = 16.0;
+                            video.muted = true;
+                        }
+                    }, 100);
+                })();
+            """.trimIndent(), null)
+        }
+    }
 
 }

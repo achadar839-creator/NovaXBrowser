@@ -105,14 +105,16 @@ class BackgroundPlayService : Service() {
 
         updateNotification()
 
-        // नई फोटो डाउनलोड करना
-        if (artworkBitmap == null && currentMediaUrl.isNotBlank()) {
+        // सुपर-फास्ट 0.1s थंबनेल और टाइटल अपडेट
+        if (currentMediaUrl.isNotBlank()) {
             thread {
                 val newArtwork = loadArtwork(currentMediaUrl)
                 if (newArtwork != null) {
                     artworkBitmap = newArtwork
-                    updateNotification()
+                } else {
+                    artworkBitmap = null // पुराना थंबनेल अटका न रहे, तुरंत रीसेट हो
                 }
+                updateNotification()
             }
         }
         return START_STICKY
