@@ -1489,6 +1489,12 @@ private val fileUploadPicker = registerForActivityResult(
 
     
 
+        private fun extractMediaFiles(wv: android.webkit.WebView) {
+
+
+
+    
+
         val script = """
             (function() {
               const found = [];
