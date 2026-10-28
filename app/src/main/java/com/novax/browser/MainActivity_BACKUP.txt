@@ -12,6 +12,7 @@ import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
@@ -58,8 +59,38 @@ class MainActivity : AppCompatActivity() {
     private val tabs = mutableListOf<KeepAliveWebView>()
     private var currentTabIndex = 0
     private var pinnedMusicTab: KeepAliveWebView? = null
+    private var mediaActionReceiver: android.content.BroadcastReceiver? = null
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+
+    private var pendingMicPermissionRequest: PermissionRequest? = null
+
+    private val micPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val request = pendingMicPermissionRequest
+        pendingMicPermissionRequest = null
+
+        if (granted && request != null) {
+            val audioResources = request.resources.filter {
+                it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+            }.toTypedArray()
+
+            if (audioResources.isNotEmpty()) {
+                request.grant(audioResources)
+            } else {
+                request.deny()
+            }
+        } else {
+            request?.deny()
+            Toast.makeText(
+                this,
+                "Microphone permission is required for voice input",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
 
     private val qrPermissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -88,7 +119,7 @@ private val qrCameraLauncher = registerForActivityResult(
                         AlertDialog.Builder(this)
                             .setTitle("QR Code मिला")
                             .setMessage(value)
-                            .setNegativeButton("बंद करें", null)
+                            .setNegativeButton("Close", null)
                             .setPositiveButton("खोलें") { _, _ ->
                                 val parsed = android.net.Uri.parse(value.trim())
                                 val scheme = parsed.scheme?.lowercase()
@@ -151,10 +182,9 @@ private val fileUploadPicker = registerForActivityResult(
     private var allowHttpOnce: String? = null
     private val trackerHosts = setOf("doubleclick.net", "google-analytics.com", "googletagmanager.com", "facebook.net", "hotjar.com", "clarity.ms")
     private var trackingProtectionEnabled = true
-    private var pageTitle: String = "NovaX Browser"
+    private var pageTitle: String = "Infer Browser"
 
     private var rewardedAd: RewardedAd? = null
-    private var completedRewards = 0
     private val rewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
     private val premiumPrefs by lazy { getSharedPreferences("novax_premium", MODE_PRIVATE) }
 
@@ -162,6 +192,10 @@ private val fileUploadPicker = registerForActivityResult(
         premiumPrefs.getLong("premium_until", 0L) > System.currentTimeMillis()
 
     private fun loadRewardedAd() {
+        if (isPremiumActive()) {
+            rewardedAd = null
+            return
+        }
         RewardedAd.load(this, rewardedAdUnitId, AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) { rewardedAd = ad }
@@ -174,33 +208,54 @@ private val fileUploadPicker = registerForActivityResult(
             Toast.makeText(this, "👑 Premium is already active", Toast.LENGTH_SHORT).show()
             return
         }
+
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
             Toast.makeText(this, "Ad loading—please tap again shortly", Toast.LENGTH_SHORT).show()
             return
         }
+
         rewardedAd = null
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 if (earned) {
-                    completedRewards++
-                    if (completedRewards >= 2) {
-                        premiumPrefs.edit().putLong(
-                            "premium_until", System.currentTimeMillis() + 24L * 60L * 60L * 1000L
-                        ).apply()
-                        completedRewards = 0
-                        Toast.makeText(this@MainActivity, "👑 Premium unlocked for 24 hours!", Toast.LENGTH_LONG).show()
+                    val count = premiumPrefs.getInt("completed_rewards", 0) + 1
+                    if (count >= 2) {
+                        val premiumUntil = System.currentTimeMillis() + 6L * 60L * 60L * 1000L
+                        premiumPrefs.edit()
+                            .putLong("premium_until", premiumUntil)
+                            .putBoolean("premium_unlocked", true)
+                            .putInt("completed_rewards", 0)
+                            .apply()
+                        Toast.makeText(this@MainActivity,
+                            "👑 Premium unlocked for 6 hours!", Toast.LENGTH_LONG).show()
                         updateUI()
                     } else {
-                        Toast.makeText(this@MainActivity, "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
+                        premiumPrefs.edit().putInt("completed_rewards", count).apply()
+                        Toast.makeText(this@MainActivity,
+                            "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
                     }
+                } else {
+                    Toast.makeText(this@MainActivity,
+                        "Reward not earned. Please watch the ad fully.", Toast.LENGTH_SHORT).show()
                 }
+                updateUI()
                 loadRewardedAd()
             }
+
+            override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                rewardedAd = null
+                loadRewardedAd()
+                Toast.makeText(this@MainActivity,
+                    "Ad couldn't be shown. Please try again.", Toast.LENGTH_SHORT).show()
+            }
         }
-        ad.show(this) { earned = true }
+
+        ad.show(this) {
+            earned = true
+        }
     }
 
 
@@ -210,12 +265,126 @@ private val fileUploadPicker = registerForActivityResult(
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == BackgroundPlayService.ACTION_PLAY_PAUSE) {
-            val tab = pinnedMusicTab
-            tab?.evaluateJavascript(
-                "(function(){var v=document.querySelector('video,audio');if(v){if(v.paused){v.play()}else{v.pause()}}})()",
-                null
-            )
+        handleMediaAction(intent)
+    }
+
+    private fun handleMediaAction(intent: Intent) {
+
+        when (intent.action) {
+            BackgroundPlayService.ACTION_OPEN_PINNED -> {
+                val pinned = pinnedMusicTab
+                val index = tabs.indexOf(pinned)
+                if (pinned != null && index >= 0) {
+                    switchToTab(index)
+                    pinned.requestFocus()
+                } else {
+                    Toast.makeText(this, "Pinned media tab is no longer available", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            BackgroundPlayService.ACTION_NEXT, BackgroundPlayService.ACTION_PREVIOUS -> {
+                val tab = pinnedMusicTab
+                if (tab != null) {
+                    val js = if (intent.action == BackgroundPlayService.ACTION_NEXT) {
+                        """(function(){
+                            var s = ['.ytp-next-button', '.ytm-custom-control[aria-label*="Next"]', '.ytm-custom-control[aria-label*="अगला"]', 'button[aria-label*="Next"]', 'button[title*="Next"]', 'a.ytm-autonav-bar-link', '[class*="next-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime += 10; return 'skipped'; }
+                            return 'unavailable';
+                        })()"""
+                    } else {
+                        """(function(){
+                            var s = ['.ytp-prev-button', '.ytm-custom-control[aria-label*="Previous"]', '.ytm-custom-control[aria-label*="पिछला"]', 'button[aria-label*="Previous"]', 'button[title*="Previous"]', '[class*="prev-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime -= 10; return 'skipped'; }
+                            return 'unavailable';
+                        })()"""
+                    }
+                    tab.evaluateJavascript(js, null)
+                } else {
+                    Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            BackgroundPlayService.ACTION_PLAY_PAUSE -> {
+                val tab = pinnedMusicTab
+                if (tab == null) {
+                    Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
+                } else {
+                    val js = """(function(){
+                        var media = Array.from(document.querySelectorAll('video,audio'));
+                        var m = media.find(function(x){ return !x.paused && !x.ended; });
+                        if (!m) {
+                            m = media.find(function(x){ return x.readyState > 0 && !x.ended; });
+                        }
+                        if (!m) {
+                            return JSON.stringify({
+                                playing: false,
+                                title: document.title,
+                                url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
+                                found: false
+                            });
+                        }
+
+                        if (m.paused || m.ended) {
+                            try {
+                                var promise = m.play();
+                                if (promise && promise.catch) {
+                                    promise.catch(function(){});
+                                }
+                            } catch(e) {}
+                        } else {
+                            m.pause();
+                        }
+
+                        return JSON.stringify({
+                            playing: !m.paused && !m.ended,
+                            title: document.title,
+                            url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
+                            found: true
+                        });
+                    })()"""
+
+                    tab.evaluateJavascript(js) { raw ->
+                        try {
+                            val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
+                            val json = if (decoded is String) {
+                                org.json.JSONObject(decoded)
+                            } else {
+                                decoded as? org.json.JSONObject
+                            }
+
+                            if (json != null && json.optBoolean("found", false)) {
+                                val update = Intent(this, BackgroundPlayService::class.java).apply {
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_TITLE,
+                                        json.optString("title", tab.title ?: "Infer Browser Audio")
+                                    )
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_URL,
+                                        json.optString("url", tab.url.orEmpty())
+                                    )
+                                    putExtra(
+                                        BackgroundPlayService.EXTRA_PLAYING,
+                                        json.optBoolean("playing", false)
+                                    )
+                                    putExtra(
+                                        "novax_media_duration",
+                                        (json.optDouble("duration", 0.0) * 1000).toLong()
+                                    )
+                                    putExtra(
+                                        "novax_media_position",
+                                        (json.optDouble("position", 0.0) * 1000).toLong()
+                                    )
+                                }
+                                startService(update)
+                            }
+                        } catch (_: Exception) {
+                            // Ignore invalid JavaScript responses.
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -228,11 +397,40 @@ private val fileUploadPicker = registerForActivityResult(
                     tab.goBack()
                 } else {
                     isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                    finish()
                 }
             }
         })
         setContentView(R.layout.activity_main)
+
+        mediaActionReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(
+                context: android.content.Context?,
+                intent: Intent?
+            ) {
+                if (intent != null) handleMediaAction(intent)
+            }
+        }
+
+        val mediaFilter = android.content.IntentFilter().apply {
+            addAction(BackgroundPlayService.ACTION_PLAY_PAUSE)
+            addAction(BackgroundPlayService.ACTION_NEXT)
+            addAction(BackgroundPlayService.ACTION_PREVIOUS)
+            addAction(BackgroundPlayService.ACTION_OPEN_PINNED)
+        }
+
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            mediaActionReceiver,
+            mediaFilter,
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        val savedTitle = getSharedPreferences("novax_preferences", MODE_PRIVATE)
+            .getString("browser_title", null)
+        findViewById<android.widget.TextView>(R.id.tvBrand).text =
+            if (savedTitle.isNullOrBlank() || savedTitle.contains("NovaX", ignoreCase = true))
+                "⚡ Infer Browser"
+            else savedTitle
 
         MobileAds.initialize(this) {}
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -240,7 +438,11 @@ private val fileUploadPicker = registerForActivityResult(
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 410)
         }
         loadRewardedAd()
-        findViewById<AdView>(R.id.adView).loadAd(AdRequest.Builder().build())
+        val bannerAd = findViewById<AdView>(R.id.adView)
+        bannerAd.visibility = if (isPremiumActive()) View.GONE else View.VISIBLE
+        if (!isPremiumActive()) {
+            bannerAd.loadAd(AdRequest.Builder().build())
+        }
 
         webContainer = findViewById(R.id.webContainer)
         etUrl = findViewById(R.id.etUrl)
@@ -255,8 +457,14 @@ private val fileUploadPicker = registerForActivityResult(
         progressBar.progress = 0
         progressBar.visibility = View.GONE
 
+                            nativeHomeView?.visibility = android.view.View.GONE
         createNewTab("https://www.google.com")
+        openHomePage()
         setupButtons()
+        findViewById<Button>(R.id.btnUiToggle).setOnClickListener {
+            toggleBrowserBars()
+        }
+        toggleBrowserBars()
         applySavedTheme()
         restoreSavedWallpaper()
         updateUI()
@@ -265,6 +473,74 @@ private val fileUploadPicker = registerForActivityResult(
     private fun isAdmin(): Boolean {
         val email = getSharedPreferences("prefs", Context.MODE_PRIVATE).getString("email", "") ?: ""
         return email.equals("mutantsuperheros@gmail.com", true) || email.equals("achadar839@gmail.com", true)
+    }
+
+    private var browserBarsVisible = false
+    private var fullDisplayMode = false
+
+    private fun applyFullDisplayMode() {
+        if (fullDisplayMode) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(false)
+                window.insetsController?.let { c ->
+                    c.hide(android.view.WindowInsets.Type.statusBars() or
+                        android.view.WindowInsets.Type.navigationBars())
+                    c.systemBarsBehavior =
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.show(
+                    android.view.WindowInsets.Type.statusBars() or
+                    android.view.WindowInsets.Type.navigationBars())
+                window.setDecorFitsSystemWindows(true)
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+            }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && fullDisplayMode) applyFullDisplayMode()
+    }
+
+    private fun toggleBrowserBars() {
+        browserBarsVisible = !browserBarsVisible
+        fullDisplayMode = !browserBarsVisible
+        val visibility = if (browserBarsVisible) View.VISIBLE else View.GONE
+
+        findViewById<View>(R.id.topBar).visibility = visibility
+        findViewById<View>(R.id.miniPlayerBar).visibility =
+            if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.progressBar).visibility = visibility
+        findViewById<View>(R.id.adView).visibility =
+            if (browserBarsVisible && !isPremiumActive()) View.VISIBLE else View.GONE
+
+        val root = findViewById<android.view.ViewGroup>(R.id.browserRoot)
+        root?.let { container ->
+            val tools = (0 until container.childCount)
+                .map { container.getChildAt(it) }
+                .firstOrNull { it is android.widget.HorizontalScrollView }
+            tools?.visibility = visibility
+            (container.findViewById<View>(R.id.btnBack)?.parent as? View)
+                ?.visibility = visibility
+        }
+
+        findViewById<Button>(R.id.btnUiToggle).text =
+            if (browserBarsVisible) "×" else "☰"
+        applyFullDisplayMode()
     }
 
     private fun updateUI() {
@@ -278,13 +554,16 @@ private val fileUploadPicker = registerForActivityResult(
             btnAdminPanel.visibility = View.GONE
         }
         btnTabs.text = "[ ${tabs.size} ]"
-        miniPlayerBar.visibility = if (pinnedMusicTab != null) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.adView).visibility =
+            if (isPremiumActive() || !browserBarsVisible) View.GONE else View.VISIBLE
+        miniPlayerBar.visibility = if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
     }
 
     private fun createNewTab(url: String) {
         val wv = KeepAliveWebView(this)
         wv.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         wv.settings.javaScriptEnabled = true
+        wv.settings.mediaPlaybackRequiresUserGesture = false
         wv.settings.domStorageEnabled = true
         wv.settings.allowFileAccess = false
         wv.settings.allowContentAccess = true
@@ -292,12 +571,78 @@ private val fileUploadPicker = registerForActivityResult(
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, false)
         
 
+
+        // novax_home_bridge
+        wv.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun requestCustomization() {
+                runOnUiThread {
+                    if (wv.url != "https://novax.home/") {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "पहले Infer Browser Home खोलें",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@runOnUiThread
+                    }
+
+                    if (isPremiumActive() || isAdmin()) {
+                        wv.evaluateJavascript("openCustomizer()", null)
+                    } else {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("👑 Premium Feature")
+                            .setMessage(
+                                "Home Screen Customization के लिए Premium unlock करें या Admin account से login करें।"
+                            )
+                            .setPositiveButton("Watch Ads") { _, _ ->
+                                showRewardedUnlock()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                }
+            }
+        }, "NovaX")
+
         wv.webChromeClient = object : WebChromeClient() {
             // novax_web_permission_guard
-                    override fun onPermissionRequest(request: PermissionRequest?) {
-                        // Camera/microphone access is denied until explicit in-app permission approval is implemented.
-                        request?.deny()
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                if (request == null) return
+
+                runOnUiThread {
+                    val audioResources = request.resources.filter {
+                        it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    }.toTypedArray()
+
+                    if (audioResources.isEmpty()) {
+                        request.deny()
+                        return@runOnUiThread
                     }
+
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Microphone Permission")
+                        .setMessage(
+                            "Website ${request.origin} wants to use your microphone. Allow audio access?"
+                        )
+                        .setNegativeButton("Deny") { _, _ ->
+                            request.deny()
+                        }
+                        .setPositiveButton("Allow") { _, _ ->
+                            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                request.grant(audioResources)
+                            } else {
+                                pendingMicPermissionRequest = request
+                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                        .setOnCancelListener {
+                            request.deny()
+                        }
+                        .show()
+                }
+            }
 
                     override fun onShowFileChooser(
                 webView: WebView?,
@@ -340,38 +685,56 @@ private val fileUploadPicker = registerForActivityResult(
                 if (view === tabs.getOrNull(currentTabIndex) && !title.isNullOrBlank()) {
                     pageTitle = title
                     this@MainActivity.title = title
+                    if (pinnedMusicTab === view) {
+                        val i = android.content.Intent(this@MainActivity, com.novax.browser.BackgroundPlayService::class.java)
+                        i.putExtra("url", view?.url)
+                        i.putExtra("title", title)
+                        startService(i)
+                    }
                 }
             }
         }
 
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             try {
-                val request = android.app.DownloadManager.Request(Uri.parse(url))
+                val downloadUri = Uri.parse(url)
+                if (downloadUri.scheme !in listOf("http", "https")) {
+                    Toast.makeText(this, "यह लिंक सीधे डाउनलोड नहीं हो सकता", Toast.LENGTH_LONG).show()
+                    return@setDownloadListener
+                }
+
                 val fileName = android.webkit.URLUtil.guessFileName(
                     url, contentDisposition, mimeType
-                )
+                ).replace(Regex("""[/\\:*?"<>|]"""), "_")
+                    .take(180).ifBlank { "Infer_download" }
+
+                val request = android.app.DownloadManager.Request(downloadUri)
                 request.setTitle(fileName)
-                request.setDescription("NovaX Browser डाउनलोड")
+                request.setDescription("Infer Browser डाउनलोड")
+                request.setMimeType(mimeType)
+
                 val cookies = CookieManager.getInstance().getCookie(url)
-                if (!cookies.isNullOrBlank()) {
-                    request.addRequestHeader("Cookie", cookies)
+                if (!cookies.isNullOrBlank()) request.addRequestHeader("Cookie", cookies)
+                if (userAgent.isNotBlank()) request.addRequestHeader("User-Agent", userAgent)
+                val pageUrl = wv.url
+                if (!pageUrl.isNullOrBlank() && pageUrl.startsWith("http")) {
+                    request.addRequestHeader("Referer", pageUrl)
                 }
-                request.addRequestHeader("User-Agent", userAgent)
-                request.addRequestHeader("Referer", url)
+
+                request.setAllowedOverMetered(true)
+                request.setAllowedOverRoaming(true)
                 request.setNotificationVisibility(
                     android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                 )
                 request.setDestinationInExternalPublicDir(
                     android.os.Environment.DIRECTORY_DOWNLOADS, fileName
                 )
-                if (url.startsWith("https://", true)) {
-                    request.addRequestHeader("User-Agent", userAgent)
-                }
+
                 val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                manager.enqueue(request)
-                Toast.makeText(this, "डाउनलोड शुरू हुआ: $fileName", Toast.LENGTH_SHORT).show()
+                val downloadId = manager.enqueue(request)
+                Toast.makeText(this, "डाउनलोड शुरू: $fileName (ID $downloadId)", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "डाउनलोड शुरू नहीं हुआ", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "डाउनलोड त्रुटि: ${e.message ?: "अज्ञात समस्या"}", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -445,13 +808,79 @@ private val fileUploadPicker = registerForActivityResult(
                 if (request?.url?.host?.contains("doubleclick.net") == true) {
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
                 }
+                val adHost = request?.url?.host?.lowercase().orEmpty()
+                if (isPremiumActive() && (
+                    adHost == "googlesyndication.com" ||
+                    adHost.endsWith(".googlesyndication.com") ||
+                    adHost == "googleadservices.com" ||
+                    adHost.endsWith(".googleadservices.com") ||
+                    adHost == "googletagservices.com" ||
+                    adHost.endsWith(".googletagservices.com")
+                )) {
+                    return WebResourceResponse(
+                        "text/plain", "UTF-8",
+                        204, "No Content", emptyMap(),
+                        java.io.ByteArrayInputStream(ByteArray(0))
+                    )
+                }
+
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
+                    // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
+                    if (isPremiumActive()) {
+                        view?.evaluateJavascript("""
+                        (function() {
+                            if (!document.getElementById('novax-premium-adblock')) {
+                                var s = document.createElement('style');
+                                s.id = 'novax-premium-adblock';
+                                                            s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, .ytp-ad-persistent-progress-bar { display: none !important; }';
+                                document.head.appendChild(s);
+                            }
+                            setInterval(function() {
+                                var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
+                                if(btn) { btn.click(); }
+                                var vid = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video');
+                                if(vid && document.querySelector('.ytp-ad-player-overlay') && !isNaN(vid.duration)) {
+                                    vid.currentTime = vid.duration;
+                                }
+                            }, 50);
+                        })();
+                        """, null)
+                    }
+
+                    // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
+                    view?.evaluateJavascript("""
+                    (function() {
+                        if(window.novaxSync) return;
+                        window.novaxSync = true;
+                        var lastUrl = location.href;
+                        setInterval(function() {
+                            if(location.href !== lastUrl) {
+                                lastUrl = location.href;
+                                document.title = document.title + ' 🎵';
+                            }
+                        }, 200);
+                    })();
+                    """, null)
+                // novax_transparent_home_wallpaper
+                if (view != null && !url.isNullOrBlank() &&
+                    (url.contains("google.com") || url == "about:blank")) {
+                    view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    view.evaluateJavascript(
+                        "(function(){document.documentElement.style.setProperty('background','transparent','important');if(document.body)document.body.style.setProperty('background','transparent','important');})();",
+                        null
+                    )
+                }
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
+                if (url != null && (url.contains("youtube.com") || url.contains("youtu.be"))) {
+                }
+                if (isPremiumActive() && url?.contains("youtube.com") == true) {
+                }
 
                 if (!url.isNullOrBlank() &&
-                    (url.startsWith("https://") || url.startsWith("http://"))) {
+                    (url.startsWith("https://") || url.startsWith("http://")) &&
+                    !url.startsWith("https://novax.home/")) {
                     val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
                     val history = prefs.getStringSet("browser_history", emptySet())
                         ?.toMutableSet() ?: mutableSetOf()
@@ -485,6 +914,7 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun showTabsOverview() {
         if (tabs.isEmpty()) {
+                            nativeHomeView?.visibility = android.view.View.GONE
             createNewTab("https://www.google.com")
             return
         }
@@ -497,7 +927,7 @@ private val fileUploadPicker = registerForActivityResult(
         scroll.addView(rows)
 
         val dialog = AlertDialog.Builder(this)
-            .setTitle("NovaX Tabs (${tabs.size})")
+            .setTitle("Infer Browser Tabs (${tabs.size})")
             .setView(scroll)
             .setPositiveButton("+ New Tab", null)
             .setNegativeButton("Close", null)
@@ -558,6 +988,7 @@ private val fileUploadPicker = registerForActivityResult(
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 dialog.dismiss()
+                            nativeHomeView?.visibility = android.view.View.GONE
                 createNewTab("https://www.google.com")
             }
         }
@@ -591,6 +1022,7 @@ private val fileUploadPicker = registerForActivityResult(
 
         if (tabs.isEmpty()) {
             currentTabIndex = 0
+                            nativeHomeView?.visibility = android.view.View.GONE
             createNewTab("https://www.google.com")
             return
         }
@@ -650,7 +1082,7 @@ private val fileUploadPicker = registerForActivityResult(
                 tag = "novax_wallpaper"
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 setImageURI(uri)
-                contentDescription = "NovaX photo wallpaper"
+                contentDescription = "Infer Browser photo wallpaper"
             }
             webContainer.addView(image, 0, params)
         } else {
@@ -685,7 +1117,7 @@ private val fileUploadPicker = registerForActivityResult(
         )
 
         AlertDialog.Builder(this)
-            .setTitle("NovaX Appearance")
+            .setTitle("Infer Browser Appearance")
             .setItems(options) { dialog, which ->
                 when (which) {
                     0 -> photoPicker.launch(arrayOf("image/*"))
@@ -704,7 +1136,7 @@ private val fileUploadPicker = registerForActivityResult(
         val selected = prefs.getInt("selected_theme", 0).coerceIn(0, themes.lastIndex)
 
         AlertDialog.Builder(this)
-            .setTitle("NovaX Appearance")
+            .setTitle("Infer Browser Appearance")
             .setSingleChoiceItems(themes, selected) { dialog, which ->
                 prefs.edit().putInt("selected_theme", which).apply()
                 val colors = when (which) {
@@ -729,7 +1161,7 @@ private val fileUploadPicker = registerForActivityResult(
         val options = arrayOf("वर्तमान वेबसाइट सेव करें", "सेव वेबसाइटें खोलें", "वेबसाइट हटाएँ")
 
         AlertDialog.Builder(this)
-            .setTitle("🔖 NovaX Bookmarks")
+            .setTitle("🔖 Infer Browser Bookmarks")
             .setItems(options) { _, choice ->
                 when (choice) {
                     0 -> {
@@ -824,26 +1256,88 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
-    private fun openHomePage() {
-        val homeUrl = getSharedPreferences(
-            "novax_preferences", MODE_PRIVATE
-        ).getString("custom_homepage", "https://www.google.com")
-            ?: "https://www.google.com"
 
-        val index = currentTabIndex
-        if (index in tabs.indices) {
-            tabs[index].loadUrl(homeUrl)
+    // novax_custom_home_loader
+    private fun loadInferHome(webView: WebView) {
+        try {
+            val html = assets.open("novax_home.html")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            webView.loadDataWithBaseURL(
+                "https://novax.home/",
+                html,
+                "text/html",
+                "UTF-8",
+                null
+            )
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                "Infer Browser Home नहीं खुल पाया",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private var nativeHomeView: android.widget.LinearLayout? = null
+    private fun openHomePage() {
+        val tab = tabs.getOrNull(currentTabIndex) ?: return
+        val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
+        val homeUrl = prefs.getString("custom_homepage", "https://www.google.com") ?: "https://www.google.com"
+        if (homeUrl.contains("google.com") || homeUrl.isEmpty()) {
+            tab.visibility = android.view.View.GONE
+            if (nativeHomeView == null) {
+                nativeHomeView = android.widget.LinearLayout(this).apply {
+                    layoutParams = android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = android.view.Gravity.CENTER
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        tag = "home_title"
+                        textSize = 42f
+                        setTextColor(android.graphics.Color.WHITE)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setShadowLayer(15f, 0f, 0f, android.graphics.Color.BLACK)
+                        layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 60 }
+                    })
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        text = "🔍 Search Google or type URL"
+                        textSize = 16f
+                        setTextColor(android.graphics.Color.WHITE)
+                        setPadding(50, 35, 50, 35)
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            cornerRadius = 60f
+                            setColor(android.graphics.Color.parseColor("#25FFFFFF"))
+                            setStroke(3, android.graphics.Color.parseColor("#66FFFFFF"))
+                        }
+                        setOnClickListener {
+                            nativeHomeView?.visibility = android.view.View.GONE
+                            createNewTab("https://www.google.com")
+                        }
+                        textSize = 15f
+                        setTextColor(android.graphics.Color.parseColor("#EEEEEE"))
+                        setShadowLayer(8f, 0f, 0f, android.graphics.Color.BLACK)
+                    })
+                }
+                findViewById<android.widget.FrameLayout>(R.id.webContainer).addView(nativeHomeView, 1)
+            }
+            nativeHomeView?.visibility = android.view.View.VISIBLE
+            nativeHomeView?.findViewWithTag<android.widget.TextView>("home_title")?.text = prefs.getString("browser_title", "⚡ Infer Browser")
+            etUrl.setText("")
+            etUrl.hint = prefs.getString("search_hint", "Search or enter address")
+        } else {
+            nativeHomeView?.visibility = android.view.View.GONE
+            tab.visibility = android.view.View.VISIBLE
+            tab.loadUrl(homeUrl)
         }
     }
 
 
     private fun showBrowserSettings() {
         val options = arrayOf(
-            "होमपेज बदलें",
-            "ब्राउज़िंग हिस्ट्री साफ़ करें"
+            "Change Homepage",
+            "Clear Browsing History"
         )
         AlertDialog.Builder(this)
-            .setTitle("NovaX Browser Settings")
+            .setTitle("Infer Browser Settings")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
@@ -890,7 +1384,7 @@ private val fileUploadPicker = registerForActivityResult(
                         ).show()
                     }
                 }
-            }.setNegativeButton("बंद करें", null).show()
+            }.setNegativeButton("Close", null).show()
     }
 
 
@@ -920,12 +1414,12 @@ private val fileUploadPicker = registerForActivityResult(
             "https://www.instagram.com"
         )
         AlertDialog.Builder(this)
-            .setTitle("NovaX Quick Links")
+            .setTitle("Infer Browser Quick Links")
             .setItems(names) { _, which ->
                 val index = currentTabIndex
                 if (index in tabs.indices) tabs[index].loadUrl(urls[which])
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -982,6 +1476,185 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
+
+    private fun openMediaDownloader(wv: WebView, selectAll: Boolean = false) {
+        if (!isPremiumActive() && !isAdmin()) {
+            showRewardedUnlock()
+            return
+        }
+
+        val script = """
+            (function() {
+              const found = [];
+              const videoExt = /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i;
+              const audioExt = /\.(mp3|m4a|aac|ogg|wav|flac|opus)(?:$|[?#])/i;
+              const imageExt = /\.(jpg|jpeg|png|webp|gif|avif|bmp)(?:$|[?#])/i;
+
+              function add(raw, label, kind) {
+                try {
+                  if (!raw) return;
+                  const u = new URL(raw, location.href);
+                  if (!['http:', 'https:'].includes(u.protocol)) return;
+
+                  let type = kind || '';
+                  if (videoExt.test(u.href)) type = 'VIDEO';
+                  else if (audioExt.test(u.href)) type = 'AUDIO';
+                  else if (imageExt.test(u.href)) type = 'IMAGE';
+                  else {
+                    const mime = (label || '').toLowerCase();
+                    if (/^video\//.test(mime)) type = 'VIDEO';
+                    else if (/^audio\//.test(mime)) type = 'AUDIO';
+                    else if (/^image\//.test(mime)) type = 'IMAGE';
+                  }
+
+                  if (!type || /\.(m3u8|mpd|ts)(?:$|[?#])/i.test(u.href)) return;
+                  if (type === 'IMAGE' && (u.href.startsWith('data:') || u.href.startsWith('blob:'))) return;
+
+                  if (!found.some(x => x.url === u.href)) {
+                    found.push({
+                      url: u.href,
+                      label: String(label || u.pathname.split('/').pop() || type).slice(0, 100),
+                      type: type
+                    });
+                  }
+                } catch(e) {}
+              }
+
+              document.querySelectorAll('video, audio').forEach(e => {
+                const kind = e.tagName.toLowerCase() === 'video' ? 'VIDEO' : 'AUDIO';
+                add(e.currentSrc, e.getAttribute('title') || kind, kind);
+                add(e.src, e.getAttribute('title') || kind, kind);
+                if (kind === 'VIDEO') add(e.poster, e.getAttribute('title') || 'Video poster', 'IMAGE');
+                e.querySelectorAll('source').forEach(x =>
+                  add(x.src || x.getAttribute('src'), x.type || kind, kind)
+                );
+              });
+
+              document.querySelectorAll('source').forEach(e => {
+                const parent = e.closest('video, audio');
+                const kind = parent && parent.tagName.toLowerCase() === 'video' ? 'VIDEO' :
+                             parent ? 'AUDIO' : '';
+                add(e.src || e.getAttribute('src'), e.type || kind, kind);
+              });
+
+              document.querySelectorAll('a[href]').forEach(e => {
+                add(e.href, e.innerText.trim() || e.download || '', '');
+              });
+
+              document.querySelectorAll('img').forEach(e => {
+                add(e.currentSrc || e.src, e.alt || 'Image', 'IMAGE');
+                add(e.getAttribute('data-src'), e.alt || 'Image', 'IMAGE');
+                add(e.getAttribute('data-original'), e.alt || 'Image', 'IMAGE');
+                const set = e.getAttribute('srcset') || e.getAttribute('data-srcset') || '';
+                set.split(',').forEach(part => {
+                  const candidate = part.trim().split(/\s+/)[0];
+                  add(candidate, e.alt || 'Image', 'IMAGE');
+                });
+              });
+
+              document.querySelectorAll('[src]').forEach(e => {
+                const tag = e.tagName.toLowerCase();
+                if (tag === 'img' || tag === 'video' || tag === 'audio' || tag === 'source') return;
+                add(e.getAttribute('src'), tag, '');
+              });
+
+              return JSON.stringify(found);
+            })();
+        """.trimIndent()
+
+        wv.evaluateJavascript(script) { raw ->
+            try {
+                val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
+                val items = org.json.JSONArray(decoded as? String ?: "[]")
+
+                if (items.length() == 0) {
+                    Toast.makeText(
+                        this,
+                        "इस पेज पर सीधे डाउनलोड होने वाली मीडिया फाइल नहीं मिली",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@evaluateJavascript
+                }
+
+                val labels = Array(items.length()) { i ->
+                    val item = items.getJSONObject(i)
+                    "${item.optString("type")} — ${item.optString("label")}"
+                }
+                val selected = BooleanArray(items.length()) { selectAll }
+
+                AlertDialog.Builder(this)
+                    .setTitle("Infer Browser Media Downloader")
+                    .setMultiChoiceItems(labels, selected) { _, which, checked ->
+                        selected[which] = checked
+                    }
+                    .setNeutralButton("Select All") { _, _ ->
+                        openMediaDownloader(wv, true)
+                    }
+                    .setPositiveButton("Download Selected") { _, _ ->
+                        var count = 0
+                        for (i in selected.indices) {
+                            if (!selected[i]) continue
+                            val item = items.getJSONObject(i)
+                            val url = item.optString("url")
+                            try {
+                                val uri = Uri.parse(url)
+                                val request = android.app.DownloadManager.Request(uri)
+                                val cookies = CookieManager.getInstance().getCookie(url)
+                                if (!cookies.isNullOrBlank()) {
+                                    request.addRequestHeader("Cookie", cookies)
+                                }
+
+                                val userAgent = wv.settings.userAgentString
+                                if (!userAgent.isNullOrBlank()) {
+                                    request.addRequestHeader("User-Agent", userAgent)
+                                }
+                                request.addRequestHeader("Referer", wv.url ?: url)
+
+                                val suggested = URLUtil.guessFileName(
+                                    url, null, null
+                                )
+                                val name = suggested
+                                    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                    .take(180)
+                                    .ifBlank { "infer_media_${System.currentTimeMillis()}" }
+
+                                request.setTitle(name)
+                                request.setDescription("Infer Browser Media Downloader")
+                                request.setNotificationVisibility(
+                                    android.app.DownloadManager.Request
+                                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                )
+                                request.setDestinationInExternalPublicDir(
+                                    android.os.Environment.DIRECTORY_DOWNLOADS,
+                                    name
+                                )
+
+                                val manager = getSystemService(
+                                    Context.DOWNLOAD_SERVICE
+                                ) as android.app.DownloadManager
+                                manager.enqueue(request)
+                                count++
+                            } catch (_: Exception) {
+                            }
+                        }
+                        Toast.makeText(
+                            this,
+                            "Download Started: $count Files",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    .setNegativeButton("Close", null)
+                    .show()
+            } catch (_: Exception) {
+                Toast.makeText(
+                    this,
+                    "मीडिया सूची पढ़ने में समस्या हुई",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
     private fun showWebsiteTools() {
         val wv = tabs.getOrNull(currentTabIndex)
         if (wv == null) {
@@ -994,7 +1667,8 @@ private val fileUploadPicker = registerForActivityResult(
             "वेबसाइट की जानकारी",
             "टेक्स्ट बड़ा करें",
             "टेक्स्ट छोटा करें",
-            "पेज रीफ़्रेश करें"
+            "पेज रीफ़्रेश करें",
+            "👑 Premium Media Downloader"
         )
         AlertDialog.Builder(this)
             .setTitle("Website Tools")
@@ -1014,9 +1688,16 @@ private val fileUploadPicker = registerForActivityResult(
                         wv.settings.textZoom = websiteTextZoom
                     }
                     3 -> wv.reload()
+                    4 -> {
+                        if (isPremiumActive() || isAdmin()) {
+                            openMediaDownloader(wv)
+                        } else {
+                            showRewardedUnlock()
+                        }
+                    }
                 }
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1057,7 +1738,7 @@ private val fileUploadPicker = registerForActivityResult(
                 Toast.makeText(this, "Search: $selectedSearchEngine", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1108,7 +1789,7 @@ private val fileUploadPicker = registerForActivityResult(
         }
         val share = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "${wv.title ?: "NovaX Browser"}\n$url")
+            putExtra(Intent.EXTRA_TEXT, "${wv.title ?: "Infer Browser"}\n$url")
         }
         startActivity(Intent.createChooser(share, "वेबसाइट शेयर करें"))
     }
@@ -1146,7 +1827,7 @@ private fun loadSearchEnginePreference() {
                     }
                 }
             }
-            .setNegativeButton("बंद करें", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
@@ -1229,13 +1910,16 @@ override fun onDestroy() {
         pageTts?.stop()
         pageTts?.shutdown()
         pageTts = null
+        mediaActionReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
+        mediaActionReceiver = null
         super.onDestroy()
     }
 
     private fun setupButtons() {
         findViewById<Button>(R.id.btnRestoreSession).setOnClickListener { restoreBrowserSession() }
         findViewById<Button>(R.id.btnFindPage).setOnClickListener { findTextInPage() }
-        findViewById<Button>(R.id.btnSpeakPage).setOnClickListener { speakPageText() }
         findViewById<Button>(R.id.btnQrScanner).setOnClickListener { showQrScannerNotice() }
         findViewById<Button>(R.id.btnReadingMode).setOnClickListener { showReadingMode() }
         findViewById<Button>(R.id.btnSharePage).setOnClickListener { shareCurrentPage() }
@@ -1245,7 +1929,28 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnDesktopMode).setOnClickListener { toggleDesktopMode() }
         findViewById<Button>(R.id.btnQuickLinks).setOnClickListener { showQuickLinks() }
         findViewById<Button>(R.id.btnClearData).setOnClickListener { clearBrowserData() }
-        findViewById<Button>(R.id.btnDownloads).setOnClickListener { openDownloadsFolder() }
+        findViewById<Button>(R.id.btnDownloads).setOnClickListener {
+            val tab = tabs.getOrNull(currentTabIndex)
+            val currentUrl = tab?.url ?: ""
+            if (currentUrl.contains("youtube.com/watch") || currentUrl.contains("youtu.be/") || currentUrl.contains("youtube.com/shorts/")) {
+                Toast.makeText(this, "🚀 Fetching YouTube Premium Links...", Toast.LENGTH_SHORT).show()
+// Ghost downloader permanently removed
+            } else {
+                tab?.evaluateJavascript("(function(){ var v = document.querySelector('video'); if(v && v.src && !v.src.startsWith('blob:')) return v.src; var s = document.querySelector('video source'); if(s && s.src && !s.src.startsWith('blob:')) return s.src; var a = document.querySelector('audio'); if(a && a.src && !a.src.startsWith('blob:')) return a.src; return 'not_found'; })()") { result ->
+                    val res = result?.replace("\"", "")
+                    if (res != null && res != "not_found" && res != "null" && res.isNotBlank()) {
+                        Toast.makeText(this, "📥 Media Found! Downloading...", Toast.LENGTH_SHORT).show()
+                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(res))
+                        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        request.setTitle("Infer Browser Download")
+                        getSystemService(android.app.DownloadManager::class.java).enqueue(request)
+                    } else {
+                        Toast.makeText(this, "❌ Media link nahi mila! (Protected/Blob Video)", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+        findViewById<Button>(R.id.btnDownloads).setOnLongClickListener { openDownloadsFolder(); true }
 
         findViewById<Button>(R.id.btnRefresh).setOnClickListener {
             val wv = tabs.getOrNull(currentTabIndex)
@@ -1280,6 +1985,8 @@ override fun onDestroy() {
 
 
         findViewById<Button>(R.id.btnGo).setOnClickListener { 
+            nativeHomeView?.visibility = android.view.View.GONE
+            tabs.getOrNull(currentTabIndex)?.visibility = android.view.View.VISIBLE
             val u = etUrl.text.toString()
             if (u.startsWith("https://") || u.startsWith("http://")) {
                 tabs.getOrNull(currentTabIndex)?.loadUrl(u)
@@ -1294,11 +2001,41 @@ override fun onDestroy() {
         btnTabs.setOnClickListener { showTabsOverview() }
         
         findViewById<Button>(R.id.btnPinAudio).setOnClickListener {
-            pinnedMusicTab = tabs[currentTabIndex]
-            pinnedMusicTab?.allowBackgroundPlay = true
-            startService(Intent(this, BackgroundPlayService::class.java))
-            createNewTab("https://www.google.com")
-            Toast.makeText(this, "🎵 Audio Pinned & Background Play ON", Toast.LENGTH_SHORT).show()
+            if (!isPremiumActive() && !isAdmin()) {
+                AlertDialog.Builder(this)
+                    .setTitle("👑 Premium Feature")
+                    .setMessage("Pin Audio is a Premium feature. Watch 2 rewarded ads completely to unlock Premium.")
+                    .setPositiveButton("Watch Ads") { _, _ -> showRewardedUnlock() }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return@setOnClickListener
+            }
+
+            val tab = tabs.getOrNull(currentTabIndex)
+            if (tab == null) {
+                Toast.makeText(this, "पहले कोई टैब खोलें", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            pinnedMusicTab = tab
+            tab.allowBackgroundPlay = true
+
+            val title = tab.title?.takeIf { it.isNotBlank() } ?: "Infer Browser Audio"
+            val url = tab.url.orEmpty()
+            val serviceIntent = Intent(this, BackgroundPlayService::class.java).apply {
+                putExtra(BackgroundPlayService.EXTRA_TITLE, title)
+                putExtra(BackgroundPlayService.EXTRA_URL, url)
+                putExtra(BackgroundPlayService.EXTRA_PLAYING, true)
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+
+            updateUI()
+            Toast.makeText(this, "🎵 Audio pinned: $title", Toast.LENGTH_SHORT).show()
         }
         
         findViewById<Button>(R.id.btnMiniPlayPause).setOnClickListener {
@@ -1307,11 +2044,32 @@ override fun onDestroy() {
                 Toast.makeText(this, "पहले Pin Audio दबाएँ", Toast.LENGTH_SHORT).show()
             } else {
                 musicTab.evaluateJavascript(
-                    "(function(){var media=document.querySelectorAll('audio,video');var playing=false;media.forEach(function(m){if(!m.paused){m.pause();}else{m.play().catch(function(){});playing=true;}});return playing;})()",
-                    null
-                )
-                Toast.makeText(this, "Play/Pause अनुरोध भेजा गया", Toast.LENGTH_SHORT).show()
+                    "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(!m)return 'no-media';if(m.paused){return m.play().then(function(){return 'playing';}).catch(function(){return 'blocked';});}m.pause();return 'paused';})()"
+                ) { result ->
+                    val msg = when {
+                        result == null -> "मीडिया का जवाब नहीं मिला"
+                        result.contains("playing") -> "▶️ चल रहा है"
+                        result.contains("paused") -> "⏸️ रोक दिया"
+                        result.contains("blocked") -> "वेबसाइट ने प्ले रोक दिया"
+                        else -> "पहले वेबसाइट पर मीडिया चलाएँ"
+                    }
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                }
             }
+        }
+
+        findViewById<Button>(R.id.btnMiniPrevious).setOnClickListener {
+            pinnedMusicTab?.evaluateJavascript(
+                "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(m)m.currentTime=Math.max(0,m.currentTime-10);return 'ok';})()",
+                null
+            )
+        }
+
+        findViewById<Button>(R.id.btnMiniNext).setOnClickListener {
+            pinnedMusicTab?.evaluateJavascript(
+                "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(m)m.currentTime=Math.min(Number.isFinite(m.duration)?m.duration:m.currentTime+10,m.currentTime+10);return 'ok';})()",
+                null
+            )
         }
 
         findViewById<Button>(R.id.btnMiniClose).setOnClickListener {
@@ -1322,6 +2080,7 @@ override fun onDestroy() {
                     tabs.removeAt(index)
                     webContainer.removeView(musicTab)
                     if (tabs.isEmpty()) {
+                            nativeHomeView?.visibility = android.view.View.GONE
                         createNewTab("https://www.google.com")
                     } else {
                         if (currentTabIndex > index) currentTabIndex--
@@ -1342,10 +2101,7 @@ override fun onDestroy() {
         }
 
         btnAdminPanel.setOnClickListener {
-            val input = EditText(this).apply { setText(getSharedPreferences("prefs", 0).getString("vip", defaultVipUrl)) }
-            AlertDialog.Builder(this).setTitle("⚙️ Admin: Set VIP Link").setView(input)
-                .setPositiveButton("Save") { _, _ -> getSharedPreferences("prefs", 0).edit().putString("vip", input.text.toString()).apply() }
-                .show()
+            showAdminCustomization()
         }
 
         btnLogin.setOnClickListener {
@@ -1365,4 +2121,29 @@ override fun onDestroy() {
             }
         }
     }
+
+
+    private fun showAdminCustomization() {
+        val options = arrayOf("Browser Title", "Search Bar Hint", "Homepage URL", "VIP Link")
+        AlertDialog.Builder(this).setTitle("⚙️ Admin: Home Customization").setItems(options) { _, which -> editAdminSetting(which, options[which]) }.setNegativeButton("Close", null).show()
+    }
+
+    private fun editAdminSetting(which: Int, title: String) {
+        val keys = arrayOf("browser_title", "search_hint", "custom_homepage", "vip")
+        val defaults = arrayOf("⚡ Infer Browser", "Search or enter address", "https://www.google.com", defaultVipUrl)
+        val prefs = if (which == 3) getSharedPreferences("prefs", 0) else getSharedPreferences("novax_preferences", MODE_PRIVATE)
+        val input = EditText(this).apply { setText(prefs.getString(keys[which], defaults[which])) }
+        AlertDialog.Builder(this).setTitle(title).setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                var value = input.text.toString().trim()
+                if (which == 2 && value.isNotBlank() && !value.startsWith("http")) value = "https://$value"
+                prefs.edit().putString(keys[which], value).apply()
+                if (which == 0) findViewById<android.widget.TextView>(R.id.tvBrand).text = value
+                if (which == 0) nativeHomeView?.findViewWithTag<android.widget.TextView>("home_title")?.text = value
+                if (which == 1) etUrl.hint = value
+            }.show()
+    }
+
 }
+// Force New Build Update
