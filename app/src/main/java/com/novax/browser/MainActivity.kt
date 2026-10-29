@@ -844,23 +844,32 @@ private val fileUploadPicker = registerForActivityResult(
                     // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
-                        (function() {
-                            if (!document.getElementById('novax-premium-adblock')) {
-                                var s = document.createElement('style');
-                                s.id = 'novax-premium-adblock';
-                                                            s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, .ytp-ad-persistent-progress-bar { display: none !important; }';
-                                document.head.appendChild(s);
+                    (function() {
+                        if (window.novaxAdKiller) return;
+                        window.novaxAdKiller = true;
+                        
+                        var s = document.createElement('style');
+                        s.id = 'novax-premium-adblock';
+                        s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, ytm-promoted-sparkles-web-renderer, .ytp-ad-persistent-progress-bar { display: none !important; }';
+                        document.head.appendChild(s);
+                        
+                        function killAds() {
+                            var v = document.querySelector('video');
+                            /* 5-second unskippable ad bypass: Play at 16x speed and skip to end */
+                            if (v && (document.querySelector('.ad-showing') || document.querySelector('.ytm-custom-ad'))) {
+                                v.playbackRate = 16.0;
+                                v.currentTime = v.duration || 9999;
                             }
-                            setInterval(function() {
-                                var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
-                                if(btn) { btn.click(); }
-                                var vid = document.querySelector('.ad-showing video') || document.querySelector('.html5-main-video');
-                                if(vid && document.querySelector('.ytp-ad-player-overlay') && !isNaN(vid.duration)) {
-                                    vid.currentTime = vid.duration;
-                                }
-                            }, 50);
-                        })();
-                        """, null)
+                            /* Auto-click skip buttons */
+                            var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytm-ad-skip-button, .ytp-ad-skip-button-slot');
+                            if (btn) btn.click();
+                        }
+                        
+                        var observer = new MutationObserver(killAds);
+                        observer.observe(document.body, { childList: true, subtree: true });
+                        setInterval(killAds, 500);
+                    })();
+""", null)
                     }
 
                     // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
