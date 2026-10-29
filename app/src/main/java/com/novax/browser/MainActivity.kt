@@ -845,20 +845,39 @@ private val fileUploadPicker = registerForActivityResult(
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
                     (function() {
-                        if (window.godModeAdBlock) return;
-                        window.godModeAdBlock = true;
+                        if (window.mobileGodModeAdBlock) return;
+                        window.mobileGodModeAdBlock = true;
                         
-                        /* Level 1: Hide all known YouTube Ad Containers on Mobile & Desktop */
-                        var s = document.createElement('style');
-                        s.innerHTML = 'ytm-ad-player-overlay-renderer, ytm-promoted-sparkles-web-renderer, .ytp-ad-overlay-container, ytm-companion-ad-renderer, .ytp-ad-message-overlay, ytm-promoted-video-renderer, ytd-ad-slot-renderer, .ytp-ad-player-overlay, .ad-showing { display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; pointer-events: none !important; }';
-                        document.head.appendChild(s);
+                        /* Ultimate CSS Annihilation for Mobile YouTube (m.youtube.com) */
+                        var style = document.createElement('style');
+                        style.innerHTML = `
+                            ytm-promoted-sparkles-web-renderer, 
+                            ytm-ad-player-overlay-renderer, 
+                            .ytp-ad-overlay-container, 
+                            ytm-companion-ad-renderer, 
+                            .ytp-ad-message-overlay, 
+                            ytm-promoted-video-renderer, 
+                            .sparkles-light-cta,
+                            div[class*="ad-container"],
+                            div[class*="promoted-"],
+                            ytd-display-ad-renderer {
+                                display: none !important;
+                                opacity: 0 !important;
+                                width: 0 !important;
+                                height: 0 !important;
+                                pointer-events: none !important;
+                                visibility: hidden !important;
+                            }
+                        `;
+                        document.head.appendChild(style);
                         
-                        function annihilateAds() {
+                        function killMobileAds() {
                             var v = document.querySelector('video');
-                            var isAd = document.querySelector('ytm-ad-player-overlay-renderer, .ad-showing, .ytp-ad-player-overlay, .ytm-custom-ad');
                             
-                            /* Level 2: Fast-forward & Mute Unskippable Video Ads */
-                            if (v && isAd) {
+                            /* Check for mobile video ad overlays */
+                            var mobileAdOverlay = document.querySelector('ytm-ad-player-overlay-renderer, .ad-showing, .ytp-ad-player-overlay');
+                            
+                            if (v && mobileAdOverlay) {
                                 v.playbackRate = 16.0;
                                 v.muted = true;
                                 if (v.duration && !isNaN(v.duration)) {
@@ -866,18 +885,26 @@ private val fileUploadPicker = registerForActivityResult(
                                 }
                             }
                             
-                            /* Level 3: Auto-click any skip button instantly */
-                            var btns = document.querySelectorAll('.ytm-ad-skip-button, .ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern');
-                            btns.forEach(function(b) { b.click(); });
+                            /* Auto-click mobile skip buttons instantly */
+                            var skipBtns = document.querySelectorAll('.ytm-ad-skip-button, .ytp-ad-skip-button, .ytp-skip-ad-button');
+                            skipBtns.forEach(function(btn) {
+                                btn.click();
+                            });
+                            
+                            /* Remove injected feed ads dynamically on mobile scroll */
+                            var feedAds = document.querySelectorAll('ytm-promoted-sparkles-web-renderer, div[class*="promoted-video"]');
+                            feedAds.forEach(function(ad) {
+                                ad.remove();
+                            });
                         }
                         
-                        /* Run check every 100 milliseconds (Insanely fast) */
-                        setInterval(annihilateAds, 100);
+                        /* Blazing fast execution every 100ms */
+                        setInterval(killMobileAds, 100);
                         
-                        /* Run check whenever DOM changes */
-                        var obs = new MutationObserver(annihilateAds);
+                        /* MutationObserver to catch dynamically injected mobile ads */
+                        var observer = new MutationObserver(killMobileAds);
                         if (document.body) {
-                            obs.observe(document.body, { childList: true, subtree: true });
+                            observer.observe(document.body, { childList: true, subtree: true });
                         }
                     })();
 """, null)
