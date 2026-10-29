@@ -160,7 +160,7 @@ private val fileUploadPicker = registerForActivityResult(
             callback.onReceiveValue(uris)
         }
     }
-    
+
 
     private lateinit var webContainer: FrameLayout
     private lateinit var etUrl: EditText
@@ -184,6 +184,8 @@ private val fileUploadPicker = registerForActivityResult(
     private val trackerHosts = setOf("doubleclick.net", "google-analytics.com", "googletagmanager.com", "facebook.net", "hotjar.com", "clarity.ms")
     private var trackingProtectionEnabled = true
     private var pageTitle: String = "Infer Browser"
+
+    private var adCardMinimized = false
 
     private var rewardedAd: RewardedAd? = null
     private val rewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
@@ -233,7 +235,7 @@ private val fileUploadPicker = registerForActivityResult(
                         Toast.makeText(this@MainActivity,
                             "👑 Premium unlocked for 6 hours!", Toast.LENGTH_LONG).show()
                         updateUI()
-                        findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.let { ad -> ad.visibility = android.view.View.GONE; ad.destroy(); (ad.parent as? android.view.ViewGroup)?.removeView(ad) }
+                        // Keep the AdMob banner attached; do not remove it on Premium unlock.
                     } else {
                         premiumPrefs.edit().putInt("completed_rewards", count).apply()
                         Toast.makeText(this@MainActivity,
@@ -441,12 +443,33 @@ private val fileUploadPicker = registerForActivityResult(
         }
         loadRewardedAd()
         val bannerAd = findViewById<AdView>(R.id.adView)
-        if (isPremiumActive()) {
-            bannerAd.visibility = View.GONE
-            bannerAd.destroy() // अगर कोई ऐड पहले से है, तो उसे पूरी तरह खत्म कर दो
-        } else {
-            bannerAd.visibility = View.VISIBLE
-            bannerAd.loadAd(AdRequest.Builder().build())
+        bannerAd.visibility = View.VISIBLE
+        bannerAd.loadAd(AdRequest.Builder().build())
+
+        findViewById<Button>(R.id.btnAdCardToggle).setOnClickListener { button ->
+            adCardMinimized = !adCardMinimized
+
+            val adCard = findViewById<android.widget.LinearLayout>(R.id.adCardContainer)
+            val adHeader = adCard.getChildAt(0)
+
+            // Keep the card header available; collapse only the banner content.
+            bannerAd.visibility =
+                if (browserBarsVisible && !adCardMinimized) View.VISIBLE else View.GONE
+
+            adHeader.visibility = View.VISIBLE
+            adCard.setPadding(
+                adCard.paddingLeft,
+                if (adCardMinimized) 4 else 8,
+                adCard.paddingRight,
+                if (adCardMinimized) 4 else 8
+            )
+
+            (button as Button).text = if (adCardMinimized) "+" else "−"
+            button.contentDescription =
+                if (adCardMinimized) "Restore advertisement card"
+                else "Minimize advertisement card"
+
+            adCard.requestLayout()
         }
 
         webContainer = findViewById(R.id.webContainer)
@@ -530,8 +553,16 @@ private val fileUploadPicker = registerForActivityResult(
         findViewById<View>(R.id.miniPlayerBar).visibility =
             if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
         findViewById<View>(R.id.progressBar).visibility = visibility
+        findViewById<View>(R.id.adCardContainer).visibility =
+            if (browserBarsVisible) View.VISIBLE else View.GONE
         findViewById<View>(R.id.adView).visibility =
-            if (browserBarsVisible && !isPremiumActive()) View.VISIBLE else View.GONE
+            if (browserBarsVisible && !adCardMinimized) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btnAdCardToggle).apply {
+            text = if (adCardMinimized) "+" else "−"
+            contentDescription =
+                if (adCardMinimized) "Restore advertisement card"
+                else "Minimize advertisement card"
+        }
 
         val root = findViewById<android.view.ViewGroup>(R.id.browserRoot)
         root?.let { container ->
@@ -559,8 +590,16 @@ private val fileUploadPicker = registerForActivityResult(
             btnAdminPanel.visibility = View.GONE
         }
         btnTabs.text = "[ ${tabs.size} ]"
+        findViewById<View>(R.id.adCardContainer).visibility =
+            if (browserBarsVisible) View.VISIBLE else View.GONE
         findViewById<View>(R.id.adView).visibility =
-            if (isPremiumActive() || !browserBarsVisible) View.GONE else View.VISIBLE
+            if (browserBarsVisible && !adCardMinimized) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btnAdCardToggle).apply {
+            text = if (adCardMinimized) "+" else "−"
+            contentDescription =
+                if (adCardMinimized) "Restore advertisement card"
+                else "Minimize advertisement card"
+        }
         miniPlayerBar.visibility = if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
     }
 
@@ -576,7 +615,7 @@ private val fileUploadPicker = registerForActivityResult(
         wv.settings.allowContentAccess = true
         wv.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, false)
-        
+
 
 
         // novax_home_bridge
@@ -790,7 +829,7 @@ private val fileUploadPicker = registerForActivityResult(
                     return true
                 }
 
-                
+
                 // Adult Blocker & SafeSearch
                 if (adultDomains.any { host == it || host.endsWith(".$it") }) {
                     Toast.makeText(this@MainActivity, "🚫 Adult Content Blocked!", Toast.LENGTH_SHORT).show()
@@ -803,37 +842,32 @@ private val fileUploadPicker = registerForActivityResult(
                 return false
             }
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                val adUrl = request?.url?.toString()?.lowercase() ?: ""
-                val adServers = listOf("doubleclick.net", "googleadservices.com", "googlesyndication.com", "adservice.google.com", "amazon-adsystem.com", "popads.net", "adform.net")
-                if (adServers.any { adUrl.contains(it) }) return WebResourceResponse("text/plain", "UTF-8", null)
-                    // novax_tracker_filter
-                    val requestUrl = request?.url
-                    val requestHost = requestUrl?.host?.lowercase().orEmpty()
-                    if (trackingProtectionEnabled && requestHost.isNotBlank() &&
-                        trackerHosts.any { requestHost == it || requestHost.endsWith(".$it") }) {
-                        return WebResourceResponse(
-                            "text/plain", "UTF-8",
-                            204, "No Content", emptyMap(),
-                            java.io.ByteArrayInputStream(ByteArray(0))
-                        )
-                    }
-
-                if (request?.url?.host?.contains("doubleclick.net") == true) {
-                    return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
-                }
                 val adHost = request?.url?.host?.lowercase().orEmpty()
-                if (isPremiumActive() && (
-                    adHost == "googlesyndication.com" ||
-                    adHost.endsWith(".googlesyndication.com") ||
-                    adHost == "googleadservices.com" ||
-                    adHost.endsWith(".googleadservices.com") ||
-                    adHost == "googletagservices.com" ||
-                    adHost.endsWith(".googletagservices.com")
-                )) {
+                val adServers = setOf(
+                    "doubleclick.net",
+                    "googleadservices.com",
+                    "googlesyndication.com",
+                    "googletagservices.com",
+                    "adservice.google.com",
+                    "amazon-adsystem.com",
+                    "popads.net",
+                    "adform.net"
+                )
+                if (adHost.isNotBlank() &&
+                    adServers.any { adHost == it || adHost.endsWith(".$it") }) {
                     return WebResourceResponse(
-                        "text/plain", "UTF-8",
-                        204, "No Content", emptyMap(),
-                        java.io.ByteArrayInputStream(ByteArray(0))
+                        "text/plain", "UTF-8", 204, "No Content",
+                        emptyMap(), java.io.ByteArrayInputStream(ByteArray(0))
+                    )
+                }
+
+                // Website tracker protection
+                val requestHost = request?.url?.host?.lowercase().orEmpty()
+                if (trackingProtectionEnabled && requestHost.isNotBlank() &&
+                    trackerHosts.any { requestHost == it || requestHost.endsWith(".$it") }) {
+                    return WebResourceResponse(
+                        "text/plain", "UTF-8", 204, "No Content",
+                        emptyMap(), java.io.ByteArrayInputStream(ByteArray(0))
                     )
                 }
 
@@ -841,22 +875,22 @@ private val fileUploadPicker = registerForActivityResult(
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                     view?.evaluateJavascript("(function() { var s = document.createElement('style'); s.innerHTML = '.ad-container, .adsbygoogle, div[id^=\'google_ads\'] { display: none !important; }'; document.head.appendChild(s); })();", null)
-                    // 1. Immortal AdBlocker (सिर्फ प्रीमियम के लिए)
-                    if (isPremiumActive()) {
+                    // 1. Immortal AdBlocker (वेबसाइटों पर हमेशा सक्रिय)
+
                         view?.evaluateJavascript("""
                     (function() {
                         if (window.mobileGodModeAdBlock) return;
                         window.mobileGodModeAdBlock = true;
-                        
+
                         /* Ultimate CSS Annihilation for Mobile YouTube (m.youtube.com) */
                         var style = document.createElement('style');
                         style.innerHTML = `
-                            ytm-promoted-sparkles-web-renderer, 
-                            ytm-ad-player-overlay-renderer, 
-                            .ytp-ad-overlay-container, 
-                            ytm-companion-ad-renderer, 
-                            .ytp-ad-message-overlay, 
-                            ytm-promoted-video-renderer, 
+                            ytm-promoted-sparkles-web-renderer,
+                            ytm-ad-player-overlay-renderer,
+                            .ytp-ad-overlay-container,
+                            ytm-companion-ad-renderer,
+                            .ytp-ad-message-overlay,
+                            ytm-promoted-video-renderer,
                             .sparkles-light-cta,
                             div[class*="ad-container"],
                             div[class*="promoted-"],
@@ -870,13 +904,13 @@ private val fileUploadPicker = registerForActivityResult(
                             }
                         `;
                         document.head.appendChild(style);
-                        
+
                         function killMobileAds() {
                             var v = document.querySelector('video');
-                            
+
                             /* Check for mobile video ad overlays */
                             var mobileAdOverlay = document.querySelector('ytm-ad-player-overlay-renderer, .ad-showing, .ytp-ad-player-overlay');
-                            
+
                             if (v && mobileAdOverlay) {
                                 v.playbackRate = 16.0;
                                 v.muted = true;
@@ -884,23 +918,23 @@ private val fileUploadPicker = registerForActivityResult(
                                     v.currentTime = v.duration;
                                 }
                             }
-                            
+
                             /* Auto-click mobile skip buttons instantly */
                             var skipBtns = document.querySelectorAll('.ytm-ad-skip-button, .ytp-ad-skip-button, .ytp-skip-ad-button');
                             skipBtns.forEach(function(btn) {
                                 btn.click();
                             });
-                            
+
                             /* Remove injected feed ads dynamically on mobile scroll */
                             var feedAds = document.querySelectorAll('ytm-promoted-sparkles-web-renderer, div[class*="promoted-video"]');
                             feedAds.forEach(function(ad) {
                                 ad.remove();
                             });
                         }
-                        
+
                         /* Blazing fast execution every 100ms */
                         setInterval(killMobileAds, 100);
-                        
+
                         /* MutationObserver to catch dynamically injected mobile ads */
                         var observer = new MutationObserver(killMobileAds);
                         if (document.body) {
@@ -908,7 +942,7 @@ private val fileUploadPicker = registerForActivityResult(
                         }
                     })();
 """, null)
-                    }
+
 
                     // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
                     view?.evaluateJavascript("""
@@ -953,7 +987,7 @@ private val fileUploadPicker = registerForActivityResult(
                 }
             }
         }
-        
+
         tabs.add(wv)
         val wallpaperIndex = (0 until webContainer.childCount)
             .firstOrNull { webContainer.getChildAt(it).tag == "novax_wallpaper" }
@@ -1538,13 +1572,13 @@ private val fileUploadPicker = registerForActivityResult(
 
 
 
-    
+
 
         private fun extractMediaFiles(wv: android.webkit.WebView) {
 
 
 
-    
+
 
         val script = """
             (function() {
@@ -1717,7 +1751,7 @@ private val fileUploadPicker = registerForActivityResult(
         }
     }
 
-    
+
 
 
     private fun saveBrowserSession() {
@@ -1816,7 +1850,7 @@ private fun loadSearchEnginePreference() {
         selectedSearchEngine = getSharedPreferences("novax_preferences", MODE_PRIVATE).getString("search_engine", "Google") ?: "Google"
     }
 
-    
+
     private fun findTextInPage() {
         val input = EditText(this).apply {
             hint = "वेबसाइट में शब्द खोजें"
@@ -1943,7 +1977,7 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnSharePage).setOnClickListener { shareCurrentPage() }
         findViewById<Button>(R.id.btnSearchEngine).setOnClickListener { showSearchEngineSelector() }
         loadSearchEnginePreference()
-        
+
         findViewById<Button>(R.id.btnDesktopMode).setOnClickListener { toggleDesktopMode() }
         findViewById<Button>(R.id.btnQuickLinks).setOnClickListener { showQuickLinks() }
         findViewById<Button>(R.id.btnClearData).setOnClickListener { clearBrowserData() }
@@ -1984,7 +2018,7 @@ override fun onDestroy() {
         }
 
 
-        findViewById<Button>(R.id.btnGo).setOnClickListener { 
+        findViewById<Button>(R.id.btnGo).setOnClickListener {
             nativeHomeView?.visibility = android.view.View.GONE
             tabs.getOrNull(currentTabIndex)?.visibility = android.view.View.VISIBLE
             val u = etUrl.text.toString()
@@ -1997,9 +2031,9 @@ override fun onDestroy() {
             }
         }
         findViewById<Button>(R.id.btnHome).setOnClickListener { openHomePage() }
-        
+
         btnTabs.setOnClickListener { showTabsOverview() }
-        
+
         findViewById<Button>(R.id.btnPinAudio).setOnClickListener {
             if (!isPremiumActive() && !isAdmin()) {
                 AlertDialog.Builder(this)
@@ -2037,7 +2071,7 @@ override fun onDestroy() {
             updateUI()
             Toast.makeText(this, "🎵 Audio pinned: $title", Toast.LENGTH_SHORT).show()
         }
-        
+
         findViewById<Button>(R.id.btnMiniPlayPause).setOnClickListener {
             val musicTab = pinnedMusicTab
             if (musicTab == null) {
@@ -2095,7 +2129,7 @@ override fun onDestroy() {
             stopService(Intent(this, BackgroundPlayService::class.java))
             updateUI()
         }
-        
+
         findViewById<Button>(R.id.btnWallpaper).setOnClickListener {
             showWallpaperMenu()
         }
@@ -2107,12 +2141,12 @@ override fun onDestroy() {
         btnLogin.setOnClickListener {
             val input = EditText(this)
             AlertDialog.Builder(this).setTitle("👤 Login").setView(input).setMessage("Enter Admin Email:")
-                .setPositiveButton("Login") { _, _ -> 
+                .setPositiveButton("Login") { _, _ ->
                     getSharedPreferences("prefs", 0).edit().putString("email", input.text.toString()).apply()
                     updateUI()
                 }.show()
         }
-        
+
         btnVipAd.setOnClickListener {
             if (isAdmin()) {
                 Toast.makeText(this, "👑 Admin Premium Active", Toast.LENGTH_SHORT).show()

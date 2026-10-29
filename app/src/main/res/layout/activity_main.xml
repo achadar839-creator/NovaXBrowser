@@ -124,13 +124,57 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <com.google.android.gms.ads.AdView
-        android:id="@+id/adView"
+    <LinearLayout
+        android:id="@+id/adCardContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#0D1117"
-        ads:adSize="BANNER"
-        ads:adUnitId="ca-app-pub-3940256099942544/6300978111" />
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:orientation="vertical"
+        android:background="@drawable/novax_liquid_glass"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="ADVERTISEMENT"
+                android:textColor="#BFFFFFFF"
+                android:textSize="10sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="sans" />
+
+            <Button
+                android:id="@+id/btnAdCardToggle"
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="−"
+                android:textSize="20sp"
+                android:textColor="#FFFFFFFF"
+                android:backgroundTint="#30FFFFFF"
+                android:contentDescription="Minimize advertisement card" />
+        </LinearLayout>
+
+        <com.google.android.gms.ads.AdView
+            android:id="@+id/adView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            ads:adSize="BANNER"
+            ads:adUnitId="ca-app-pub-3940256099942544/6300978111" />
+
+    </LinearLayout>
 
     <HorizontalScrollView
         android:layout_width="match_parent"
