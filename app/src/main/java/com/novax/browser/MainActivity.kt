@@ -845,29 +845,40 @@ private val fileUploadPicker = registerForActivityResult(
                     if (isPremiumActive()) {
                         view?.evaluateJavascript("""
                     (function() {
-                        if (window.novaxAdKiller) return;
-                        window.novaxAdKiller = true;
+                        if (window.godModeAdBlock) return;
+                        window.godModeAdBlock = true;
                         
+                        /* Level 1: Hide all known YouTube Ad Containers on Mobile & Desktop */
                         var s = document.createElement('style');
-                        s.id = 'novax-premium-adblock';
-                        s.innerHTML = '.ad-showing video { opacity: 0 !important; width: 0px !important; height: 0px !important; } .ytp-ad-overlay-container, ytd-ad-slot-renderer, ytp-ad-message-overlay, ytm-promoted-sparkles-web-renderer, .ytp-ad-persistent-progress-bar { display: none !important; }';
+                        s.innerHTML = 'ytm-ad-player-overlay-renderer, ytm-promoted-sparkles-web-renderer, .ytp-ad-overlay-container, ytm-companion-ad-renderer, .ytp-ad-message-overlay, ytm-promoted-video-renderer, ytd-ad-slot-renderer, .ytp-ad-player-overlay, .ad-showing { display: none !important; opacity: 0 !important; width: 0 !important; height: 0 !important; pointer-events: none !important; }';
                         document.head.appendChild(s);
                         
-                        function killAds() {
+                        function annihilateAds() {
                             var v = document.querySelector('video');
-                            /* 5-second unskippable ad bypass: Play at 16x speed and skip to end */
-                            if (v && (document.querySelector('.ad-showing') || document.querySelector('.ytm-custom-ad'))) {
+                            var isAd = document.querySelector('ytm-ad-player-overlay-renderer, .ad-showing, .ytp-ad-player-overlay, .ytm-custom-ad');
+                            
+                            /* Level 2: Fast-forward & Mute Unskippable Video Ads */
+                            if (v && isAd) {
                                 v.playbackRate = 16.0;
-                                v.currentTime = v.duration || 9999;
+                                v.muted = true;
+                                if (v.duration && !isNaN(v.duration)) {
+                                    v.currentTime = v.duration;
+                                }
                             }
-                            /* Auto-click skip buttons */
-                            var btn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytm-ad-skip-button, .ytp-ad-skip-button-slot');
-                            if (btn) btn.click();
+                            
+                            /* Level 3: Auto-click any skip button instantly */
+                            var btns = document.querySelectorAll('.ytm-ad-skip-button, .ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern');
+                            btns.forEach(function(b) { b.click(); });
                         }
                         
-                        var observer = new MutationObserver(killAds);
-                        observer.observe(document.body, { childList: true, subtree: true });
-                        setInterval(killAds, 500);
+                        /* Run check every 100 milliseconds (Insanely fast) */
+                        setInterval(annihilateAds, 100);
+                        
+                        /* Run check whenever DOM changes */
+                        var obs = new MutationObserver(annihilateAds);
+                        if (document.body) {
+                            obs.observe(document.body, { childList: true, subtree: true });
+                        }
                     })();
 """, null)
                     }
