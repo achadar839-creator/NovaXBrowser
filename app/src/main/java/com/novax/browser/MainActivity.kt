@@ -590,12 +590,12 @@ private val fileUploadPicker = registerForActivityResult(
             btnLogin.text = "👑 Admin"
             btnVipAd.text = "👑 Premium Active"
             btnAdminPanel.visibility = View.VISIBLE
-            findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.visibility = View.GONE
+            findViewById<android.view.View>(R.id.adCardContainer)?.visibility = View.GONE
         } else {
             btnLogin.text = "👤 Login"
             btnVipAd.text = if (isPremiumActive()) "👑 Premium Active" else "🎬 Premium (2 Ads)"
             btnAdminPanel.visibility = View.GONE
-            findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.visibility = View.VISIBLE
+            findViewById<android.view.View>(R.id.adCardContainer)?.visibility = View.VISIBLE
         }
         btnTabs.text = "[ ${tabs.size} ]"
         findViewById<View>(R.id.adCardContainer).visibility =
