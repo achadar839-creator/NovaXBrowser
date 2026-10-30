@@ -194,7 +194,7 @@ private val fileUploadPicker = registerForActivityResult(
     private var adCardMinimized = false
 
     private var rewardedAd: RewardedAd? = null
-    private val rewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+    private val rewardedAdUnitId = "ca-app-pub-4314530224755913/9253457199"
     private val premiumPrefs by lazy { getSharedPreferences("novax_premium", MODE_PRIVATE) }
 
     private fun isPremiumActive(): Boolean =
@@ -590,10 +590,12 @@ private val fileUploadPicker = registerForActivityResult(
             btnLogin.text = "👑 Admin"
             btnVipAd.text = "👑 Premium Active"
             btnAdminPanel.visibility = View.VISIBLE
+            findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.visibility = View.GONE
         } else {
             btnLogin.text = "👤 Login"
             btnVipAd.text = if (isPremiumActive()) "👑 Premium Active" else "🎬 Premium (2 Ads)"
             btnAdminPanel.visibility = View.GONE
+            findViewById<com.google.android.gms.ads.AdView>(R.id.adView)?.visibility = View.VISIBLE
         }
         btnTabs.text = "[ ${tabs.size} ]"
         findViewById<View>(R.id.adCardContainer).visibility =
