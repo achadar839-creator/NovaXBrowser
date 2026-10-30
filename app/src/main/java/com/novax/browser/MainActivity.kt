@@ -30,72 +30,7 @@ import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
-    private val universalAdBlockScript = """
-        (function() {
-            if (window.hasUniversalAdBlocker) return;
-            window.hasUniversalAdBlocker = true;
-            'use strict';
-            const adCSS = `
-                .video-ads, .ytp-ad-module, .ytp-ad-overlay-image, #masthead-ad,
-                ytd-promoted-sparkles-web-renderer, .ad-showing, .ad-container,
-                .adsbygoogle, div[id^="google_ads"], iframe[src*="ad"],
-                div[class*="ad-banner"], div[class*="advertisement"], div[class*="sponsored"],
-                iframe[src*="doubleclick"], div[id*="div-gpt-ad"] {
-                    display: none !important;
-                    visibility: hidden !important;
-                    opacity: 0 !important;
-                    pointer-events: none !important;
-                    width: 0 !important;
-                    height: 0 !important;
-                    max-height: 0 !important;
-                }
-            `;
-            const injectStyle = () => {
-                if (!document.getElementById('novax-universal-ad-css')) {
-                    const style = document.createElement('style');
-                    style.id = 'novax-universal-ad-css';
-                    style.innerHTML = adCSS;
-                    (document.head || document.documentElement).appendChild(style);
-                }
-            };
-            injectStyle();
-            setInterval(injectStyle, 1000);
-    
-            setInterval(() => {
-                const ads = document.querySelectorAll('.ad-container, .adsbygoogle, div[id^="google_ads"], iframe[src*="ad"], div[class*="ad-banner"], div[class*="advertisement"], div[class*="sponsored"]');
-                ads.forEach(el => el.remove());
-    
-                const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot, .videoAdUiSkipButton');
-                if (skipBtn) skipBtn.click();
-    
-                const video = document.querySelector('video');
-                if (video && (document.querySelector('.ad-showing') || video.duration < 30)) {
-                    video.playbackRate = 16.0;
-                    video.muted = true;
-                    try { if (video.duration && !isNaN(video.duration)) { video.currentTime = video.duration; } } catch(e) {}
-                }
-            }, 50);
-    
-            const observer = new MutationObserver((mutations) => {
-                for (let mutation of mutations) {
-                    for (let node of mutation.addedNodes) {
-                        if (node && node.nodeType === 1) {
-                            const tag = node.tagName ? node.tagName.toLowerCase() : '';
-                            const cls = node.className ? node.className.toString().toLowerCase() : '';
-                            const id = node.id ? node.id.toString().toLowerCase() : '';
-                            const src = node.src ? node.src.toLowerCase() : '';
-                            if (cls.includes('ad') || id.includes('ad') || (tag === 'iframe' && (src.includes('ad') || src.includes('doubleclick') || src.includes('syndication')))) {
-                                node.remove();
-                            }
-                        }
-                    }
-                }
-            });
-            if (document.body) {
-                observer.observe(document.body, { childList: true, subtree: true });
-            }
-        })();
-        """
+
 
     var globalLastDownloadTime = 0L
     private val photoPicker = registerForActivityResult(
@@ -913,22 +848,14 @@ private val fileUploadPicker = registerForActivityResult(
                 return false
             }
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                val adHost = request?.url?.host?.lowercase().orEmpty()
-                val adServers = setOf(
-                    "doubleclick.net",
-                    "googleadservices.com",
-                    "googlesyndication.com",
-                    "googletagservices.com",
-                    "adservice.google.com",
-                    "amazon-adsystem.com",
-                    "popads.net",
-                    "adform.net"
-                )
-                if (adHost.isNotBlank() &&
-                    adServers.any { adHost == it || adHost.endsWith(".$it") }) {
+                if (InferAdBlocker.shouldBlock(request)) {
                     return WebResourceResponse(
-                        "text/plain", "UTF-8", 204, "No Content",
-                        emptyMap(), java.io.ByteArrayInputStream(ByteArray(0))
+                        "text/plain",
+                        "UTF-8",
+                        204,
+                        "No Content",
+                        emptyMap(),
+                        ByteArrayInputStream(ByteArray(0))
                     )
                 }
 
@@ -945,79 +872,11 @@ private val fileUploadPicker = registerForActivityResult(
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
-            view?.evaluateJavascript(universalAdBlockScript, null)
 
                     view?.evaluateJavascript("(function() { var s = document.createElement('style'); s.innerHTML = '.ad-container, .adsbygoogle, div[id^=\'google_ads\'] { display: none !important; }'; document.head.appendChild(s); })();", null)
-                    // 1. Immortal AdBlocker (वेबसाइटों पर हमेशा सक्रिय)
+                    view?.evaluateJavascript(InferAdBlocker.webScript, null)
 
-                        view?.evaluateJavascript("""
-                    (function() {
-                        if (window.mobileGodModeAdBlock) return;
-                        window.mobileGodModeAdBlock = true;
-
-                        /* Ultimate CSS Annihilation for Mobile YouTube (m.youtube.com) */
-                        var style = document.createElement('style');
-                        style.innerHTML = `
-                            ytm-promoted-sparkles-web-renderer,
-                            ytm-ad-player-overlay-renderer,
-                            .ytp-ad-overlay-container,
-                            ytm-companion-ad-renderer,
-                            .ytp-ad-message-overlay,
-                            ytm-promoted-video-renderer,
-                            .sparkles-light-cta,
-                            div[class*="ad-container"],
-                            div[class*="promoted-"],
-                            ytd-display-ad-renderer {
-                                display: none !important;
-                                opacity: 0 !important;
-                                width: 0 !important;
-                                height: 0 !important;
-                                pointer-events: none !important;
-                                visibility: hidden !important;
-                            }
-                        `;
-                        document.head.appendChild(style);
-
-                        function killMobileAds() {
-                            var v = document.querySelector('video');
-
-                            /* Check for mobile video ad overlays */
-                            var mobileAdOverlay = document.querySelector('ytm-ad-player-overlay-renderer, .ad-showing, .ytp-ad-player-overlay');
-
-                            if (v && mobileAdOverlay) {
-                                v.playbackRate = 16.0;
-                                v.muted = true;
-                                if (v.duration && !isNaN(v.duration)) {
-                                    v.currentTime = v.duration;
-                                }
-                            }
-
-                            /* Auto-click mobile skip buttons instantly */
-                            var skipBtns = document.querySelectorAll('.ytm-ad-skip-button, .ytp-ad-skip-button, .ytp-skip-ad-button');
-                            skipBtns.forEach(function(btn) {
-                                btn.click();
-                            });
-
-                            /* Remove injected feed ads dynamically on mobile scroll */
-                            var feedAds = document.querySelectorAll('ytm-promoted-sparkles-web-renderer, div[class*="promoted-video"]');
-                            feedAds.forEach(function(ad) {
-                                ad.remove();
-                            });
-                        }
-
-                        /* Blazing fast execution every 100ms */
-                        setInterval(killMobileAds, 100);
-
-                        /* MutationObserver to catch dynamically injected mobile ads */
-                        var observer = new MutationObserver(killMobileAds);
-                        if (document.body) {
-                            observer.observe(document.body, { childList: true, subtree: true });
-                        }
-                    })();
-""", null)
-
-
-                    // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
+            // 2. Instant Media Sync (बिना डाउनलोडर के - सुपरफास्ट)
                     view?.evaluateJavascript("""
                     (function() {
                         if(window.novaxSync) return;
@@ -2253,35 +2112,6 @@ override fun onDestroy() {
     }
 
 
-    private val adBlockerScript = """(function(){const s=document.createElement("style");s.innerHTML=".video-ads,.ytp-ad-module,.ytp-ad-overlay-image,#masthead-ad{display:none!important}";document.head.appendChild(s);setInterval(()=>{const b=document.querySelector(".ytp-ad-skip-button");if(b)b.click();const v=document.querySelector("video");if(v&&document.querySelector(".ad-showing")){v.playbackRate=16.0;v.muted=true;}},500);})();""".trimIndent()
-
-
-
-    private fun applyPremiumAdBlocker(view: WebView?) {
-        if (isPremiumActive()) {
-            view?.evaluateJavascript("""
-                (function() {
-                    if (!document.getElementById('novax-premium-adblock')) {
-                        var s = document.createElement('style');
-                        s.id = 'novax-premium-adblock';
-                        s.innerHTML = '.video-ads, .ytp-ad-module, .ytp-ad-overlay-image, #masthead-ad, ytd-promoted-sparkles-web-renderer, .ad-showing { display: none !important; }';
-                        document.head.appendChild(s);
-                    }
-                    setInterval(() => {
-                        const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot');
-                        if (skipBtn) {
-                            skipBtn.click();
-                        }
-                        const video = document.querySelector('video');
-                        if (video && document.querySelector('.ad-showing')) {
-                            video.playbackRate = 16.0;
-                            video.muted = true;
-                        }
-                    }, 100);
-                })();
-            """.trimIndent(), null)
-        }
-    }
 
 }
 
