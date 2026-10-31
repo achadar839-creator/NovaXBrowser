@@ -1,4 +1,5 @@
 package com.novax.browser
+import android.os.SystemClock
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -136,7 +137,7 @@ class BackgroundPlayService : Service() {
         mediaSession?.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f)
+                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f, SystemClock.elapsedRealtime())
                 .build()
         )
 
@@ -167,6 +168,7 @@ class BackgroundPlayService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
+        androidx.core.app.NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
     }
 
     private fun loadArtwork(url: String): android.graphics.Bitmap? {
