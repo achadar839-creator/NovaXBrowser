@@ -1,13 +1,12 @@
 
     
+import android.content.Intent
 
 package com.novax.browser
-import android.content.Intent
 import com.novax.browser.MediaAdManager
 import com.novax.browser.InferPlayActivity
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
