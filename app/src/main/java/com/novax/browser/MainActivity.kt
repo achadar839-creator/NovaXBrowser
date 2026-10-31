@@ -1,8 +1,8 @@
 
     
-import android.content.Intent
 
 package com.novax.browser
+import android.content.Intent
 import com.novax.browser.MediaAdManager
 import com.novax.browser.InferPlayActivity
 
@@ -2126,3 +2126,29 @@ override fun onDestroy() {
 
 }
 
+
+fun makeViewDraggable(view: android.view.View) {
+    var dX = 0f
+    var dY = 0f
+    var isDrag = false
+    view.setOnTouchListener { v, event ->
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                dX = v.x - event.rawX
+                dY = v.y - event.rawY
+                isDrag = false
+                true
+            }
+            android.view.MotionEvent.ACTION_MOVE -> {
+                if (Math.abs(event.rawX + dX - v.x) > 10 || Math.abs(event.rawY + dY - v.y) > 10) isDrag = true
+                v.animate().x(event.rawX + dX).y(event.rawY + dY).setDuration(0).start()
+                true
+            }
+            android.view.MotionEvent.ACTION_UP -> {
+                if (!isDrag) v.performClick()
+                true
+            }
+            else -> false
+        }
+    }
+}
