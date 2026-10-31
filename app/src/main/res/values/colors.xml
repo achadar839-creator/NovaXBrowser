@@ -1,0 +1,9 @@
+<resources>
+    <color name="novax_primary">#6366f1</color>
+    <color name="novax_dark_bg">#0a0f1d</color>
+    <color name="novax_glass_surface">#161e38</color>
+    <color name="novax_glass_border">#334155</color>
+    <color name="novax_accent">#38bdf8</color>
+    <color name="novax_text_main">#f8fafc</color>
+    <color name="novax_text_muted">#94a3b8</color>
+</resources>

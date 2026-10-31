@@ -374,7 +374,6 @@
 
 </LinearLayout>
 
-    <LinearLayout android:id="@+id/btnInferPlay" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="12dp" android:layout_marginBottom="80dp" android:background="#0A1F0A" android:padding="12dp" android:gravity="center" android:clickable="true" android:focusable="true"><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶ Infer Play (Premium Media)" android:textColor="#00FF00" android:textStyle="bold" android:textSize="16sp"/></LinearLayout>
 <Button
         android:id="@+id/btnUiToggle"
         android:layout_width="48dp"
