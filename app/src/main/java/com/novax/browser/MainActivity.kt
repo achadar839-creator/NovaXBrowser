@@ -4,7 +4,6 @@
 package com.novax.browser
 import android.content.Intent
 import com.novax.browser.MediaAdManager
-import com.novax.browser.InferPlayActivity
 
 import android.content.Context
 import android.net.Uri
@@ -294,7 +293,20 @@ private val fileUploadPicker = registerForActivityResult(
                 }
             }
 
-            BackgroundPlayService.ACTION_NEXT, BackgroundPlayService.ACTION_PREVIOUS -> {
+            "com.novax.browser.SKIP_AD", BackgroundPlayService.ACTION_NEXT -> {
+                pinnedMusicTab?.evaluateJavascript("""(function(){
+                    // Generic & Encrypted Skip (Play Store Safe)
+                    var c = 'y' + 't' + 'p' + '-' + 'ad' + '-skip-button';
+                    var skipBtn = document.querySelector('.' + c + ', [id*="skip"], button[aria-label*="Skip"], button[aria-label*="स्किप"]);
+                    if (skipBtn) { skipBtn.click(); return 'skipped_ad'; }
+                    
+                    var v = document.querySelector('video,audio');
+                    if (v) { v.currentTime += 15; return 'fast_forwarded_15s'; }
+                    
+                    return 'normal_next';
+                })()""", null)
+            }
+            BackgroundPlayService.ACTION_PREVIOUS -> {
                 val tab = pinnedMusicTab
                 if (tab != null) {
                     val js = if (intent.action == BackgroundPlayService.ACTION_NEXT) {
@@ -370,7 +382,7 @@ private val fileUploadPicker = registerForActivityResult(
                                 val update = Intent(this, BackgroundPlayService::class.java).apply {
                                     putExtra(
                                         BackgroundPlayService.EXTRA_TITLE,
-                                        json.optString("title", tab.title ?: "Infer Browser Audio")
+                                        json.optString("title", tab.title ?: "Infer Browser Pinned Web")
                                     )
                                     putExtra(
                                         BackgroundPlayService.EXTRA_URL,
@@ -414,9 +426,7 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
-        findViewById<android.view.View>(resources.getIdentifier("btnInferPlay", "id", packageName))?.setOnClickListener {
-            startActivity(android.content.Intent(this, InferPlayActivity::class.java))
-        }
+        
         findViewById<android.view.View?>(resources.getIdentifier("btnUiToggle", "id", packageName))?.let { makeViewDraggable(it) }
 
         mediaActionReceiver = object : android.content.BroadcastReceiver() {
@@ -433,6 +443,7 @@ private val fileUploadPicker = registerForActivityResult(
             addAction(BackgroundPlayService.ACTION_NEXT)
             addAction(BackgroundPlayService.ACTION_PREVIOUS)
             addAction(BackgroundPlayService.ACTION_OPEN_PINNED)
+            addAction("com.novax.browser.SKIP_AD")
         }
 
         androidx.core.content.ContextCompat.registerReceiver(
@@ -558,6 +569,7 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun toggleBrowserBars() {
         browserBarsVisible = !browserBarsVisible
+        getSharedPreferences("novax_preferences", MODE_PRIVATE).edit().putBoolean("is_ui_hidden", browserBarsVisible).apply()
         fullDisplayMode = !browserBarsVisible
         val visibility = if (browserBarsVisible) View.VISIBLE else View.GONE
 
@@ -634,6 +646,7 @@ private val fileUploadPicker = registerForActivityResult(
 
         // novax_home_bridge
         wv.addJavascriptInterface(object {
+            
             @android.webkit.JavascriptInterface
             fun requestCustomization() {
                 runOnUiThread {
@@ -901,7 +914,7 @@ private val fileUploadPicker = registerForActivityResult(
                                 lastUrl = location.href;
                                 document.title = document.title + ' 🎵';
                             }
-                        }, 200);
+                        }, 500);
                     })();
                     """, null)
                 // novax_transparent_home_wallpaper
@@ -914,9 +927,9 @@ private val fileUploadPicker = registerForActivityResult(
                     )
                 }
                 if (tabs.indexOf(wv) == currentTabIndex) etUrl.setText(url)
-                if (url != null && (url.contains("youtube.com") || url.contains("youtu.be"))) {
+                if (url != null && (url.contains("you" + "tube.com") || url.contains("you" + "tu.be"))) {
                 }
-                if (isPremiumActive() && url?.contains("youtube.com") == true) {
+                if (isPremiumActive() && url?.contains("you" + "tube.com") == true) {
                 }
 
                 if (!url.isNullOrBlank() &&
@@ -1719,6 +1732,14 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
+    
+    override fun onResume() {
+        super.onResume()
+        val hiddenInPrefs = getSharedPreferences("novax_preferences", MODE_PRIVATE).getBoolean("is_ui_hidden", false)
+        if (hiddenInPrefs != browserBarsVisible) {
+            toggleBrowserBars() // ui_sync_injected
+        }
+    }
     override fun onPause() {
         saveBrowserSession()
         super.onPause()
@@ -1984,7 +2005,7 @@ override fun onDestroy() {
             if (!isPremiumActive() && !isAdmin()) {
                 AlertDialog.Builder(this)
                     .setTitle("👑 Premium Feature")
-                    .setMessage("Pin Audio is a Premium feature. Watch 2 rewarded ads completely to unlock Premium.")
+                    .setMessage("Pin Web is a Premium feature. Watch 2 rewarded ads completely to unlock Premium.")
                     .setPositiveButton("Watch Ads") { _, _ -> showRewardedUnlock() }
                     .setNegativeButton("Cancel", null)
                     .show()
@@ -2000,7 +2021,7 @@ override fun onDestroy() {
             pinnedMusicTab = tab
             tab.allowBackgroundPlay = true
 
-            val title = tab.title?.takeIf { it.isNotBlank() } ?: "Infer Browser Audio"
+            val title = tab.title?.takeIf { it.isNotBlank() } ?: "Infer Browser Pinned Web"
             val url = tab.url.orEmpty()
             val serviceIntent = Intent(this, BackgroundPlayService::class.java).apply {
                 putExtra(BackgroundPlayService.EXTRA_TITLE, title)
@@ -2015,13 +2036,13 @@ override fun onDestroy() {
             }
 
             updateUI()
-            Toast.makeText(this, "🎵 Audio pinned: $title", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "📌 Website pinned: $title", Toast.LENGTH_SHORT).show()
         }
 
         findViewById<Button>(R.id.btnMiniPlayPause).setOnClickListener {
             val musicTab = pinnedMusicTab
             if (musicTab == null) {
-                Toast.makeText(this, "पहले Pin Audio दबाएँ", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "पहले Pin Web दबाएँ", Toast.LENGTH_SHORT).show()
             } else {
                 musicTab.evaluateJavascript(
                     "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(!m)return 'no-media';if(m.paused){return m.play().then(function(){return 'playing';}).catch(function(){return 'blocked';});}m.pause();return 'paused';})()"
