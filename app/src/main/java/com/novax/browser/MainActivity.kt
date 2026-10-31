@@ -414,6 +414,9 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
+        findViewById<android.view.View>(resources.getIdentifier("btnInferPlay", "id", packageName))?.setOnClickListener {
+            startActivity(android.content.Intent(this, InferPlayActivity::class.java))
+        }
         findViewById<android.view.View?>(resources.getIdentifier("btnUiToggle", "id", packageName))?.let { makeViewDraggable(it) }
 
         mediaActionReceiver = object : android.content.BroadcastReceiver() {

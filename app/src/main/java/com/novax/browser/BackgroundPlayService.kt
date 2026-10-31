@@ -75,6 +75,10 @@ class BackgroundPlayService : Service() {
             }
             ACTION_PLAY_PAUSE, ACTION_NEXT, ACTION_PREVIOUS -> {
                 sendActionToBrowser(intent.action!!)
+                if (intent.action == ACTION_PLAY_PAUSE) {
+                    isCurrentlyPlaying = !isCurrentlyPlaying
+                    updateNotification()
+                }
                 return START_STICKY
             }
         }
@@ -121,50 +125,78 @@ class BackgroundPlayService : Service() {
         return START_STICKY
     }
 
+    private fun getDominantColor(bitmap: android.graphics.Bitmap?): Int {
+        if (bitmap == null) return android.graphics.Color.parseColor("#1A1A1A")
+        return try {
+            val scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, 1, 1, true)
+            val color = scaled.getPixel(0, 0)
+            scaled.recycle()
+            val hsv = FloatArray(3)
+            android.graphics.Color.colorToHSV(color, hsv)
+            hsv[1] = hsv[1] * 0.8f 
+            hsv[2] = hsv[2] * 0.35f 
+            android.graphics.Color.HSVToColor(hsv)
+        } catch (e: Exception) {
+            android.graphics.Color.parseColor("#1A1A1A")
+        }
+    }
+
     private fun updateNotification() {
         val playPauseIcon = if (isCurrentlyPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
-        val playPauseTitle = if (isCurrentlyPlaying) "Pause" else "Play"
 
         mediaSession?.setMetadata(
-            MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "Infer Browser")
-                .apply { if (currentDuration > 0) putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration) }
-                .apply { artworkBitmap?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
+            android.support.v4.media.MediaMetadataCompat.Builder()
+                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
+                .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, "Infer Premium")
+                .apply { if (currentDuration > 0) putLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration) }
+                .apply { artworkBitmap?.let { putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build()
         )
 
         mediaSession?.setPlaybackState(
-            PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f, SystemClock.elapsedRealtime())
+            android.support.v4.media.session.PlaybackStateCompat.Builder()
+                .setActions(android.support.v4.media.session.PlaybackStateCompat.ACTION_PLAY_PAUSE or android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_NEXT or android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or android.support.v4.media.session.PlaybackStateCompat.ACTION_SEEK_TO)
+                .setState(if (isCurrentlyPlaying) android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING else android.support.v4.media.session.PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f, android.os.SystemClock.elapsedRealtime())
                 .build()
         )
 
-        fun actionPending(action: String, reqCode: Int): PendingIntent {
-            val i = Intent(this, BackgroundPlayService::class.java).apply { this.action = action }
-            return PendingIntent.getService(this, reqCode, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        fun actionPending(action: String, reqCode: Int): android.app.PendingIntent {
+            val i = android.content.Intent(this, BackgroundPlayService::class.java).apply { this.action = action }
+            return android.app.PendingIntent.getService(this, reqCode, i, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
         }
 
-        val openIntent = Intent(this, MainActivity::class.java).apply {
+        val openIntent = android.content.Intent(this, MainActivity::class.java).apply {
             action = ACTION_OPEN_PINNED
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val openPending = PendingIntent.getActivity(this, 100, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val openPending = android.app.PendingIntent.getActivity(this, 100, openIntent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val customView = android.widget.RemoteViews(packageName, resources.getIdentifier("layout_custom_notification", "layout", packageName))
+        customView.setTextViewText(resources.getIdentifier("notifTitle", "id", packageName), currentTitle)
+        customView.setImageViewResource(resources.getIdentifier("notifPlayPause", "id", packageName), playPauseIcon)
+        
+        if (artworkBitmap != null) {
+            customView.setImageViewBitmap(resources.getIdentifier("notifArt", "id", packageName), artworkBitmap)
+            val bgColor = getDominantColor(artworkBitmap)
+            customView.setInt(resources.getIdentifier("notifRoot", "id", packageName), "setBackgroundColor", bgColor)
+        } else {
+            customView.setImageViewResource(resources.getIdentifier("notifArt", "id", packageName), android.R.drawable.ic_media_play)
+            customView.setInt(resources.getIdentifier("notifRoot", "id", packageName), "setBackgroundColor", android.graphics.Color.parseColor("#1A1A1A"))
+        }
+
+        customView.setOnClickPendingIntent(resources.getIdentifier("notifPlayPause", "id", packageName), actionPending(ACTION_PLAY_PAUSE, 2))
+        customView.setOnClickPendingIntent(resources.getIdentifier("notifNext", "id", packageName), actionPending(ACTION_NEXT, 3))
+        customView.setOnClickPendingIntent(resources.getIdentifier("notifPrev", "id", packageName), actionPending(ACTION_PREVIOUS, 1))
+        customView.setOnClickPendingIntent(resources.getIdentifier("notifClose", "id", packageName), actionPending(ACTION_CLOSE, 4))
+
+        val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(currentTitle)
-            .setContentText("Infer Browser")
-            .setLargeIcon(artworkBitmap)
+            .setCustomContentView(customView)
+            .setCustomBigContentView(customView)
             .setContentIntent(openPending)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(isCurrentlyPlaying)
-            .addAction(android.R.drawable.ic_media_previous, "Prev", actionPending(ACTION_PREVIOUS, 1))
-            .addAction(playPauseIcon, playPauseTitle, actionPending(ACTION_PLAY_PAUSE, 2))
-            .addAction(android.R.drawable.ic_media_next, "Next", actionPending(ACTION_NEXT, 3))
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", actionPending(ACTION_CLOSE, 4))
-            .setStyle(MediaStyle().setMediaSession(mediaSession?.sessionToken).setShowActionsInCompactView(1, 2, 3))
+            .setStyle(androidx.media.app.NotificationCompat.DecoratedMediaCustomViewStyle().setMediaSession(mediaSession?.sessionToken))
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
