@@ -221,7 +221,7 @@ private val fileUploadPicker = registerForActivityResult(
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
-            Toast.makeText(this, "Ad loading—please tap again shortly", Toast.LENGTH_SHORT).show()
+            val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L; premiumPrefs.edit().putLong("premium_until", premiumUntil).putBoolean("premium_unlocked", true).putInt("completed_rewards", 0).apply(); updateUI(); Toast.makeText(this, "👑 Ads currently unavailable. Free 2-hour Premium granted!", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -232,14 +232,14 @@ private val fileUploadPicker = registerForActivityResult(
                 if (earned) {
                     val count = premiumPrefs.getInt("completed_rewards", 0) + 1
                     if (count >= 2) {
-                        val premiumUntil = System.currentTimeMillis() + 6L * 60L * 60L * 1000L
+                        val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L
                         premiumPrefs.edit()
                             .putLong("premium_until", premiumUntil)
                             .putBoolean("premium_unlocked", true)
                             .putInt("completed_rewards", 0)
                             .apply()
                         Toast.makeText(this@MainActivity,
-                            "👑 Premium unlocked for 6 hours!", Toast.LENGTH_LONG).show()
+                            "👑 Premium unlocked for 2 hours!", Toast.LENGTH_LONG).show()
                         updateUI()
                         // Keep the AdMob banner attached; do not remove it on Premium unlock.
                     } else {
