@@ -379,7 +379,7 @@
         android:layout_height="48dp"
         android:text="☰"
         android:contentDescription="Toggle browser bars"
-        android:layout_gravity="end|center_vertical"
+        android:layout_gravity="end|bottom" android:layout_marginBottom="70dp" android:layout_marginEnd="12dp"
         android:elevation="16dp"
         android:backgroundTint="#26FFFFFF"
         android:textColor="#FFFFFF" />

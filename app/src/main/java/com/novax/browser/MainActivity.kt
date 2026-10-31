@@ -2,6 +2,9 @@
     
 
 package com.novax.browser
+import android.content.Intent
+import com.novax.browser.MediaAdManager
+import com.novax.browser.InferPlayActivity
 
 import android.content.Context
 import android.content.Intent
@@ -412,6 +415,7 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
+        findViewById<android.view.View?>(resources.getIdentifier("btnUiToggle", "id", packageName))?.let { makeViewDraggable(it) }
 
         mediaActionReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(
