@@ -861,8 +861,14 @@ private val fileUploadPicker = registerForActivityResult(
                     )
                 }
 
-                // Website tracker protection
                 val requestHost = request?.url?.host?.lowercase().orEmpty()
+                if (isPremiumActive() && requestHost.isNotBlank()) {
+                    val dnsAdDomains = listOf("adnxs.com", "criteo.com", "outbrain.com", "taboola.com", "popads.net", "propellerads.com", "adcolony.com", "vungle.com", "applovin.com", "unityads.unity3d.com", "flurry.com", "scorecardresearch.com", "quantserve.com", "chartbeat.com")
+                    if (dnsAdDomains.any { requestHost == it || requestHost.endsWith("." + it) }) {
+                        return WebResourceResponse("text/plain", "UTF-8", 204, "No Content", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
+                    }
+                }
+                // Website tracker protection
                 if (trackingProtectionEnabled && requestHost.isNotBlank() &&
                     trackerHosts.any { requestHost == it || requestHost.endsWith(".$it") }) {
                     return WebResourceResponse(
