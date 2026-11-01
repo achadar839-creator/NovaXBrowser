@@ -2282,9 +2282,7 @@ fun makeViewDraggable(view: android.view.View) {
                 }
             } catch (e: Exception) {}
         }.start()
-    }
-
-
+    
     private var lastThemeBitmap: android.graphics.Bitmap? = null
     private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
         val bitmap = when (bg) {
@@ -2294,6 +2292,7 @@ fun makeViewDraggable(view: android.view.View) {
         if (bitmap == lastThemeBitmap) return
         lastThemeBitmap = bitmap
 
+        val activity = this
         Thread {
             try {
                 var r = 0L; var g = 0L; var b = 0L; var count = 0
@@ -2317,13 +2316,13 @@ fun makeViewDraggable(view: android.view.View) {
                 val themeColor = android.graphics.Color.HSVToColor(hsv)
                 val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
 
-                runOnUiThread {
+                activity.runOnUiThread {
                     try {
-                        findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
                     } catch (e: Exception) {}
                 }
             } catch (e: Exception) {}
