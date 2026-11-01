@@ -337,7 +337,6 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
     private fun handleMediaAction(intent: Intent) {
-
         when (intent.action) {
             BackgroundPlayService.ACTION_OPEN_PINNED -> {
                 val pinned = pinnedMusicTab
@@ -349,7 +348,6 @@ private val fileUploadPicker = registerForActivityResult(
                     Toast.makeText(this, "Pinned media tab is no longer available", Toast.LENGTH_SHORT).show()
                 }
             }
-
             "com.novax.browser.SKIP_AD" -> {
                 pinnedMusicTab?.evaluateJavascript("""(function(){
                     var c = 'y' + 't' + 'p' + '-' + 'ad' + '-skip-button';
@@ -375,88 +373,6 @@ private val fileUploadPicker = registerForActivityResult(
                     var v = document.querySelector('video,audio'); if(v) { v.currentTime -= 10; return 'skipped'; }
                     return 'unavailable';
                 })()""", null)
-            }
-                }
-            }
-
-            BackgroundPlayService.ACTION_PLAY_PAUSE -> {
-                val tab = pinnedMusicTab
-                if (tab == null) {
-                    Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
-                } else {
-                    val js = """(function(){
-                        var media = Array.from(document.querySelectorAll('video,audio'));
-                        var m = media.find(function(x){ return !x.paused && !x.ended; });
-                        if (!m) {
-                            m = media.find(function(x){ return x.readyState > 0 && !x.ended; });
-                        }
-                        if (!m) {
-                            return JSON.stringify({
-                                playing: false,
-                                title: document.title,
-                                url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
-                                found: false
-                            });
-                        }
-
-                        if (m.paused || m.ended) {
-                            try {
-                                var promise = m.play();
-                                if (promise && promise.catch) {
-                                    promise.catch(function(){});
-                                }
-                            } catch(e) {}
-                        } else {
-                            m.pause();
-                        }
-
-                        return JSON.stringify({
-                            playing: !m.paused && !m.ended,
-                            title: document.title,
-                            url: location.href, duration: m.duration || 0, position: m.currentTime || 0,
-                            found: true
-                        });
-                    })()"""
-
-                    tab.evaluateJavascript(js) { raw ->
-                        try {
-                            val decoded = org.json.JSONTokener(raw ?: "null").nextValue()
-                            val json = if (decoded is String) {
-                                org.json.JSONObject(decoded)
-                            } else {
-                                decoded as? org.json.JSONObject
-                            }
-
-                            if (json != null && json.optBoolean("found", false)) {
-                                val update = Intent(this, BackgroundPlayService::class.java).apply {
-                                    putExtra(
-                                        BackgroundPlayService.EXTRA_TITLE,
-                                        json.optString("title", tab.title ?: "Infer Browser Pinned Web")
-                                    )
-                                    putExtra(
-                                        BackgroundPlayService.EXTRA_URL,
-                                        json.optString("url", tab.url.orEmpty())
-                                    )
-                                    putExtra(
-                                        BackgroundPlayService.EXTRA_PLAYING,
-                                        json.optBoolean("playing", false)
-                                    )
-                                    putExtra(
-                                        "novax_media_duration",
-                                        (json.optDouble("duration", 0.0) * 1000).toLong()
-                                    )
-                                    putExtra(
-                                        "novax_media_position",
-                                        (json.optDouble("position", 0.0) * 1000).toLong()
-                                    )
-                                }
-                                startService(update)
-                            }
-                        } catch (_: Exception) {
-                            // Ignore invalid JavaScript responses.
-                        }
-                    }
-                }
             }
         }
     }
