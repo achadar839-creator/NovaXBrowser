@@ -1351,10 +1351,10 @@ private val fileUploadPicker = registerForActivityResult(
         val currentUrl = tab.url ?: ""
         
         // --- PINNED TAB PROTECTION (पिन किए टैब को उड़ने से बचाना) ---
-        val prefs = getSharedPreferences("novax_pinned_tabs", MODE_PRIVATE)
-        val set = prefs.getStringSet("pinned_list", null) ?: mutableSetOf()
+        val pinnedPrefs = getSharedPreferences("novax_pinned_tabs", MODE_PRIVATE)
+        val pinnedSet = pinnedPrefs.getStringSet("pinned_list", null) ?: mutableSetOf()
         var isPinned = false
-        for (item in set) {
+        for (item in pinnedSet) {
             val pinnedUrl = item.substringBefore("|")
             if (currentUrl.isNotEmpty() && (currentUrl == pinnedUrl || currentUrl.startsWith(pinnedUrl))) {
                 isPinned = true
