@@ -22,6 +22,7 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-4314530224755913~9893081046" />
         <activity
+            android:excludeFromRecents="true"
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
