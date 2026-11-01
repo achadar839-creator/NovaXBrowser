@@ -629,8 +629,9 @@ private val fileUploadPicker = registerForActivityResult(
         miniPlayerBar.visibility = if (browserBarsVisible && pinnedMusicTab != null) View.VISIBLE else View.GONE
     }
 
-    private fun createNewTab(url: String) {
+    private fun createNewTab(url: String, isIncognito: Boolean = false) {
         val wv = KeepAliveWebView(this)
+        if (isIncognito) incognitoTabs.add(wv)
         wv.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         wv.settings.javaScriptEnabled = true
         wv.settings.mediaPlaybackRequiresUserGesture = false
@@ -1445,7 +1446,7 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun openIncognitoTab() {
         val privateUrl = "https://www.google.com/"
-        createNewTab(privateUrl)
+        createNewTab(privateUrl, true)
         val privateTab = tabs.getOrNull(currentTabIndex)
         if (privateTab != null) {
             incognitoTabs.add(privateTab)
