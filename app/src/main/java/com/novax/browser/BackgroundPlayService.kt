@@ -153,7 +153,7 @@ class BackgroundPlayService : Service() {
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, if(isAdPlaying) "⚠️ Advertisement" else "Infer Pinned Web")
-                .apply { if (currentDuration > 0) putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration) }
+                .apply { if (currentDuration > 0) putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration * 1000L) }
                 .apply { artworkBitmap?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build()
         )
@@ -161,7 +161,7 @@ class BackgroundPlayService : Service() {
         mediaSession?.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition, if (isCurrentlyPlaying) 1f else 0f, SystemClock.elapsedRealtime())
+                .setState(if (isCurrentlyPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED, currentPosition * 1000L, if (isCurrentlyPlaying) 1f else 0f, SystemClock.elapsedRealtime())
                 .build()
         )
 

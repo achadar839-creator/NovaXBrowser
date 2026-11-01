@@ -1337,6 +1337,11 @@ private val fileUploadPicker = registerForActivityResult(
     private var nativeHomeView: android.widget.LinearLayout? = null
     private fun openHomePage() {
         val tab = tabs.getOrNull(currentTabIndex) ?: return
+        tab.visibility = android.view.View.VISIBLE
+        nativeHomeView?.visibility = android.view.View.GONE
+        tab.loadUrl("file:///android_asset/home.html")
+        etUrl.setText("")
+        return // इसके बाद का पुराना गूगल वाला कोड इग्नोर हो जाएगा
         val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
         val homeUrl = prefs.getString("custom_homepage", "https://www.google.com") ?: "https://www.google.com"
         if (homeUrl.contains("google.com") || homeUrl.isEmpty()) {
@@ -2070,7 +2075,7 @@ override fun onDestroy() {
 
         findViewById<Button>(R.id.btnMiniNext).setOnClickListener {
             pinnedMusicTab?.evaluateJavascript(
-                "(function(){var a=Array.from(document.querySelectorAll('audio,video'));var m=a.find(function(x){return !x.paused&&!x.ended;})||a.find(function(x){return x.readyState>0&&!x.ended;});if(m)m.currentTime=Math.min(Number.isFinite(m.duration)?m.duration:m.currentTime+10,m.currentTime+10);return 'ok';})()",
+                "(function(){var b=document.querySelector(\".ytp-next-button, [aria-label=\\"Next\\" i], [title=\\"Next\\" i]\");if(b){b.click();}else{var v=document.querySelector(\"video, audio\");if(v&&v.duration){v.currentTime=v.duration;}}return \"ok\";})()",
                 null
             )
         }

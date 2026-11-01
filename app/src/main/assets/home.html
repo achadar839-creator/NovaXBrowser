@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Infer Browser</title>
+<style>
+:root { --bg: #030914; --panel: rgba(12, 27, 46, 0.72); --blue: #16baff; --cyan: #43eaff; --green: #38f5a3; --text: #eaf8ff; --muted: #8199ad; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { min-height: 100vh; background: radial-gradient(ellipse at 50% 5%, #10375b 0%, transparent 45%), radial-gradient(ellipse at 0% 65%, #063c35 0%, transparent 35%), linear-gradient(155deg, #020713, #071729 55%, #020811); color: var(--text); font-family: Arial, sans-serif; overflow-x: hidden; padding-bottom: 105px; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .18; background-image: radial-gradient(#ffffff 0.7px, transparent 0.7px); background-size: 35px 35px; }
+.topbar { height: 68px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon { width: 39px; height: 39px; border-radius: 13px; display: grid; place-items: center; font-size: 22px; font-weight: bold; color: white; background: linear-gradient(145deg, #087fc4, #063b69); border: 1px solid #43dfff; box-shadow: 0 0 18px #009dff55; }
+.brand-name { font-size: 18px; font-weight: 800; letter-spacing: 1.5px; } .brand-name span { color: var(--cyan); }
+.top-actions { display: flex; gap: 10px; } .top-btn { width: 38px; height: 38px; border-radius: 13px; border: 1px solid #294761; background: rgba(15, 36, 58, .75); color: white; font-size: 17px; }
+.hero { text-align: center; padding: 42px 20px 25px; } .hero-label { color: var(--green); font-size: 10px; letter-spacing: 4px; font-weight: bold; margin-bottom: 13px; }
+.clock { font-size: 49px; font-weight: 300; letter-spacing: 2px; text-shadow: 0 0 30px #19baff55; } .date { color: #9db8ce; font-size: 13px; margin-top: 7px; }
+.hero-title { margin-top: 30px; font-size: 22px; font-weight: 700; } .hero-subtitle { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.search-wrap { margin: 25px 19px 0; padding: 3px; border-radius: 19px; background: linear-gradient(110deg, #12aaff, #25efb0, #168dff); box-shadow: 0 0 25px #009dff35; }
+.search-box { height: 55px; border-radius: 16px; background: #071626; display: flex; align-items: center; padding: 0 15px; gap: 12px; }
+.search-icon { color: var(--cyan); font-size: 20px; } .search-box input { min-width: 0; flex: 1; background: transparent; border: none; outline: none; color: white; font-size: 14px; }
+.search-box input::placeholder { color: #7994a9; } .voice-btn { background: transparent; border: none; color: var(--green); font-size: 20px; }
+.section { margin: 33px 20px 0; } .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 17px; }
+.section-title { font-size: 14px; font-weight: 700; letter-spacing: .8px; } .section-more { color: var(--cyan); font-size: 12px; }
+.shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 19px 10px; } .shortcut { text-align: center; text-decoration: none; color: white; min-width: 0; }
+.shortcut-icon { width: 53px; height: 53px; margin: auto; display: grid; place-items: center; border-radius: 18px; background: linear-gradient(145deg, #142e48, #081626); border: 1px solid #31516a; font-size: 23px; box-shadow: inset 0 0 15px #1baaff12; }
+.shortcut-name { display: block; margin-top: 9px; font-size: 10px; color: #b5cbdc; }
+.glass-card { margin: 24px 19px 0; padding: 17px; border-radius: 20px; border: 1px solid #24506c; background: linear-gradient(135deg, rgba(18, 49, 75, .83), rgba(5, 17, 32, .83)); box-shadow: inset 0 1px 1px #ffffff10, 0 10px 30px #00000025; backdrop-filter: blur(18px); }
+.ai-card { position: relative; overflow: hidden; } .ai-card::after { content: ""; position: absolute; width: 140px; height: 140px; border-radius: 50%; right: -55px; top: -60px; background: #00baff25; filter: blur(30px); }
+.card-top { display: flex; align-items: center; gap: 12px; } .card-icon { width: 43px; height: 43px; border-radius: 14px; display: grid; place-items: center; background: #073e57; border: 1px solid #14cfff; color: var(--cyan); font-size: 21px; }
+.card-heading { font-size: 14px; font-weight: bold; } .card-caption { font-size: 10px; color: #91adbf; margin-top: 5px; }
+.ai-button { width: 100%; height: 41px; margin-top: 17px; border: 1px solid #17cfff; border-radius: 13px; background: linear-gradient(90deg, #07578a, #087b8c); color: white; font-weight: bold; letter-spacing: .5px; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin: 17px 19px 0; } .status-card { border-radius: 16px; padding: 15px 12px; background: rgba(10, 31, 49, .8); border: 1px solid #23465c; }
+.status-icon { font-size: 19px; margin-bottom: 9px; } .status-name { font-size: 11px; font-weight: bold; } .status-value { margin-top: 6px; font-size: 10px; color: var(--green); }
+.news-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #ffffff10; } .news-item:last-child { border-bottom: none; }
+.news-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: #12334c; } .news-text { font-size: 11px; color: #d7e8f5; }
+.bottom-nav { position: fixed; bottom: 13px; left: 15px; right: 15px; height: 67px; border-radius: 22px; border: 1px solid #286184; background: rgba(4, 19, 34, .91); backdrop-filter: blur(25px); box-shadow: 0 0 28px #008dff20; display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+.nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #829bad; font-size: 10px; text-decoration: none; } .nav-item span:first-child { font-size: 19px; }
+.nav-item.active { color: var(--cyan); text-shadow: 0 0 12px #16baff90; } .nav-item.active::before { content: ""; width: 22px; height: 2px; background: var(--cyan); border-radius: 5px; margin-bottom: -2px; }
+.footer { text-align: center; margin: 30px 0; font-size: 9px; color: #55758b; letter-spacing: 3px; }
+@media (min-width: 600px) { body { max-width: 520px; margin: auto; border-left: 1px solid #17354b; border-right: 1px solid #17354b; } }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="brand"><div class="brand-icon">i</div><div class="brand-name">INFER <span>BROWSER</span></div></div><div class="top-actions"><button class="top-btn" aria-label="AI">✧</button><button class="top-btn" aria-label="Menu">☰</button></div></header>
+<main>
+<section class="hero"><div class="hero-label">THE NEXT GENERATION WEB</div><div class="clock" id="clock">09:41</div><div class="date" id="date">Sunday, November 1</div><div class="hero-title">Welcome to Infer</div><div class="hero-subtitle">Explore beyond limits. Stay in control.</div></section>
+<form class="search-wrap" id="searchForm"><div class="search-box"><span class="search-icon">⌕</span><input type="search" id="searchInput" placeholder="Search or enter website..." autocomplete="off"><button type="button" class="voice-btn">🎙</button></div></form>
+<section class="section"><div class="section-head"><div class="section-title">QUICK ACCESS</div><div class="section-more">Customize +</div></div><div class="shortcuts"><a class="shortcut" href="https://www.google.com"><div class="shortcut-icon">G</div><span class="shortcut-name">Google</span></a><a class="shortcut" href="https://www.youtube.com"><div class="shortcut-icon">▶</div><span class="shortcut-name">YouTube</span></a><a class="shortcut" href="https://www.github.com"><div class="shortcut-icon">⌘</div><span class="shortcut-name">GitHub</span></a><a class="shortcut" href="https://www.wikipedia.org"><div class="shortcut-icon">W</div><span class="shortcut-name">Wikipedia</span></a><a class="shortcut" href="https://www.instagram.com"><div class="shortcut-icon">◎</div><span class="shortcut-name">Instagram</span></a><a class="shortcut" href="https://www.facebook.com"><div class="shortcut-icon">f</div><span class="shortcut-name">Facebook</span></a><a class="shortcut" href="https://www.reddit.com"><div class="shortcut-icon">◉</div><span class="shortcut-name">Reddit</span></a><a class="shortcut" href="https://www.pinterest.com"><div class="shortcut-icon">P</div><span class="shortcut-name">Pinterest</span></a></div></section>
+<section class="glass-card ai-card"><div class="card-top"><div class="card-icon">✧</div><div><div class="card-heading">INFER AI ASSISTANT</div><div class="card-caption">Your intelligent companion on the web.</div></div></div><button class="ai-button">✧ &nbsp; OPEN AI ASSISTANT</button></section>
+<section class="status-grid"><div class="status-card"><div class="status-icon">🛡️</div><div class="status-name">PRIVACY SHIELD</div><div class="status-value">● PROTECTED</div></div><div class="status-card"><div class="status-icon">⚡</div><div class="status-name">AD BLOCKER</div><div class="status-value">● ACTIVE</div></div></section>
+<section class="glass-card"><div class="section-head"><div class="section-title">YOUR WEBSPACE</div><div class="section-more">View All →</div></div><div class="news-item"><div class="news-icon">◷</div><div class="news-text"><strong>Recent Sessions</strong><br>Continue where you left off.</div></div><div class="news-item"><div class="news-icon">⬇</div><div class="news-text"><strong>Downloads</strong><br>Manage your downloaded files.</div></div><div class="news-item"><div class="news-icon">🔖</div><div class="news-text"><strong>Bookmarks</strong><br>Your saved websites in one place.</div></div></section>
+<div class="footer">INFER BROWSER · EXPLORE BEYOND LIMITS</div>
+</main>
+<nav class="bottom-nav"><a href="#" class="nav-item active"><span>⌂</span><span>Home</span></a><a href="#" class="nav-item"><span>▢</span><span>Tabs</span></a><a href="#" class="nav-item"><span>✧</span><span>AI</span></a><a href="#" class="nav-item"><span>◷</span><span>History</span></a><a href="#" class="nav-item"><span>☰</span><span>Settings</span></a></nav>
+<script>
+function updateClock() { const now = new Date(); document.getElementById("clock").textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }); document.getElementById("date").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }); }
+updateClock(); setInterval(updateClock, 1000);
+document.getElementById("searchForm").addEventListener("submit", function(event) { event.preventDefault(); const input = document.getElementById("searchInput").value.trim(); if (!input) return; let url; if (input.startsWith("https://") || input.startsWith("http://")) { url = input; } else if (input.includes(".") && !input.includes(" ")) { url = "https://" + input; } else { url = "https://www.google.com/search?q=" + encodeURIComponent(input); } window.location.href = url; });
+</script>
+</body>
+</html>
