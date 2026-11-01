@@ -1,5 +1,5 @@
 
-    
+
 
 package com.novax.browser
 import android.content.Intent
@@ -31,11 +31,11 @@ import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
-    
-    
+
+
                 if (count == 0) return@Thread
                 val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
-                
+
                 val hsv = FloatArray(3)
                 android.graphics.Color.colorToHSV(avgColor, hsv)
                 hsv[1] = Math.max(0.5f, hsv[1])
@@ -328,10 +328,10 @@ private val fileUploadPicker = registerForActivityResult(
                     var c = 'y' + 't' + 'p' + '-' + 'ad' + '-skip-button';
                     var skipBtn = document.querySelector('.' + c + ', [id*="skip"], button[aria-label*="Skip"], button[aria-label*="स्किप"]);
                     if (skipBtn) { skipBtn.click(); return 'skipped_ad'; }
-                    
+
                     var v = document.querySelector('video,audio');
                     if (v) { v.currentTime += 15; return 'fast_forwarded_15s'; }
-                    
+
                     return 'normal_next';
                 })()""", null)
             }
@@ -456,7 +456,7 @@ private val fileUploadPicker = registerForActivityResult(
         })
         setContentView(R.layout.activity_main)
 
-        
+
 
 
         // TOP BLACK BAR & BOTTOM WHITE BAR FIX
@@ -494,9 +494,9 @@ private val fileUploadPicker = registerForActivityResult(
         }
 
 
-        
 
-        
+
+
         findViewById<android.view.View?>(resources.getIdentifier("btnUiToggle", "id", packageName))?.let { makeViewDraggable(it) }
 
         mediaActionReceiver = object : android.content.BroadcastReceiver() {
@@ -717,7 +717,7 @@ private val fileUploadPicker = registerForActivityResult(
 
         // novax_home_bridge
         wv.addJavascriptInterface(object {
-            
+
             @android.webkit.JavascriptInterface
             fun requestCustomization() {
                 runOnUiThread {
@@ -1809,7 +1809,7 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
 
-    
+
     override fun onResume() {
         super.onResume()
         val hiddenInPrefs = getSharedPreferences("novax_preferences", MODE_PRIVATE).getBoolean("is_ui_hidden", false)
@@ -2154,7 +2154,7 @@ override fun onDestroy() {
             // नोटिफिकेशन सर्विस बंद करें
             val stopIntent = android.content.Intent(this@MainActivity, BackgroundPlayService::class.java).apply { action = BackgroundPlayService.ACTION_CLOSE }
             startService(stopIntent)
-            
+
             // टैब बचाए रखें, सिर्फ प्लेयर छुपाएं और वीडियो पॉज़ करें
             val webView = findViewById<android.widget.FrameLayout>(R.id.webContainer)?.getChildAt(0) as? android.webkit.WebView
             webView?.evaluateJavascript("var m = document.querySelectorAll('video, audio'); m.forEach(function(v) { v.pause(); });", null)
@@ -2213,8 +2213,55 @@ override fun onDestroy() {
 
 
 
-}
 
+    private var lastThemeBitmap: android.graphics.Bitmap? = null
+    private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
+        val bitmap = when (bg) {
+            is android.graphics.drawable.BitmapDrawable -> bg.bitmap
+            else -> return
+        }
+        if (bitmap == lastThemeBitmap) return
+        lastThemeBitmap = bitmap
+
+        val activity = this
+        Thread {
+            try {
+                var r = 0L; var g = 0L; var b = 0L; var count = 0
+                val step = Math.max(1, bitmap.width / 20)
+                for (x in 0 until bitmap.width step step) {
+                    for (y in 0 until bitmap.height step step) {
+                        val pixel = bitmap.getPixel(x, y)
+                        r += android.graphics.Color.red(pixel)
+                        g += android.graphics.Color.green(pixel)
+                        b += android.graphics.Color.blue(pixel)
+                        count++
+                    }
+                }
+                if (count == 0) return@Thread
+                val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
+
+                val hsv = FloatArray(3)
+                android.graphics.Color.colorToHSV(avgColor, hsv)
+                hsv[1] = Math.max(0.5f, hsv[1])
+                hsv[2] = Math.max(0.8f, hsv[2])
+                val themeColor = android.graphics.Color.HSVToColor(hsv)
+                val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
+
+                activity.runOnUiThread {
+                    try {
+                        activity.findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
+                        activity.findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
+                    } catch (e: Exception) {}
+                }
+            } catch (e: Exception) {}
+        }.start()
+    }
+
+
+}
 
 fun makeViewDraggable(view: android.view.View) {
     var dX = 0f
@@ -2241,92 +2288,4 @@ fun makeViewDraggable(view: android.view.View) {
         }
     }
 
-    
-        if (bitmap == lastThemeBitmap) return
-        lastThemeBitmap = bitmap
 
-        Thread {
-            try {
-                var r = 0L; var g = 0L; var b = 0L; var count = 0
-                val step = Math.max(1, bitmap.width / 20)
-                for (x in 0 until bitmap.width step step) {
-                    for (y in 0 until bitmap.height step step) {
-                        val pixel = bitmap.getPixel(x, y)
-                        r += android.graphics.Color.red(pixel)
-                        g += android.graphics.Color.green(pixel)
-                        b += android.graphics.Color.blue(pixel)
-                        count++
-                    }
-                }
-                if (count == 0) return@Thread
-                val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
-                
-                val hsv = FloatArray(3)
-                android.graphics.Color.colorToHSV(avgColor, hsv)
-                hsv[1] = Math.max(0.5f, hsv[1])
-                hsv[2] = Math.max(0.8f, hsv[2])
-                val themeColor = android.graphics.Color.HSVToColor(hsv)
-                val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
-
-                runOnUiThread {
-                    try {
-                        findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
-                        findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
-
-                        val js = "javascript:if(typeof setDynamicTheme === 'function') { setDynamicTheme('" + hexColor + "'); }"
-                        tabs.forEach { it.evaluateJavascript(js, null) }
-                    } catch (e: Exception) {}
-                }
-            } catch (e: Exception) {}
-        }.start()
-    
-    private var lastThemeBitmap: android.graphics.Bitmap? = null
-    private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
-        val bitmap = when (bg) {
-            is android.graphics.drawable.BitmapDrawable -> bg.bitmap
-            else -> return
-        }
-        if (bitmap == lastThemeBitmap) return
-        lastThemeBitmap = bitmap
-
-        val activity = this
-        Thread {
-            try {
-                var r = 0L; var g = 0L; var b = 0L; var count = 0
-                val step = Math.max(1, bitmap.width / 20)
-                for (x in 0 until bitmap.width step step) {
-                    for (y in 0 until bitmap.height step step) {
-                        val pixel = bitmap.getPixel(x, y)
-                        r += android.graphics.Color.red(pixel)
-                        g += android.graphics.Color.green(pixel)
-                        b += android.graphics.Color.blue(pixel)
-                        count++
-                    }
-                }
-                if (count == 0) return@Thread
-                val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
-                
-                val hsv = FloatArray(3)
-                android.graphics.Color.colorToHSV(avgColor, hsv)
-                hsv[1] = Math.max(0.5f, hsv[1])
-                hsv[2] = Math.max(0.8f, hsv[2])
-                val themeColor = android.graphics.Color.HSVToColor(hsv)
-                val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
-
-                activity.runOnUiThread {
-                    try {
-                        activity.findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
-                    } catch (e: Exception) {}
-                }
-            } catch (e: Exception) {}
-        }.start()
-    }
-
-}
