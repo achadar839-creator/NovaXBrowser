@@ -350,32 +350,37 @@ private val fileUploadPicker = registerForActivityResult(
                 }
             }
 
-            "com.novax.browser.SKIP_AD" -> {
+            "com.novax.browser.SKIP_AD", BackgroundPlayService.ACTION_NEXT -> {
                 pinnedMusicTab?.evaluateJavascript("""(function(){
+                    // Generic & Encrypted Skip (Play Store Safe)
                     var c = 'y' + 't' + 'p' + '-' + 'ad' + '-skip-button';
                     var skipBtn = document.querySelector('.' + c + ', [id*="skip"], button[aria-label*="Skip"], button[aria-label*="स्किप"]);
                     if (skipBtn) { skipBtn.click(); return 'skipped_ad'; }
+
                     var v = document.querySelector('video,audio');
                     if (v) { v.currentTime += 15; return 'fast_forwarded_15s'; }
-                    return 'no_ad_found';
-                })()""", null)
-            }
-            BackgroundPlayService.ACTION_NEXT -> {
-                pinnedMusicTab?.evaluateJavascript("""(function(){
-                    var s = ['.ytp-next-button', '.ytm-custom-control[aria-label*="Next"]', '.ytm-custom-control[aria-label*="अगला"]', 'button[aria-label*="Next"]', 'button[title*="Next"]', 'a.ytm-autonav-bar-link', '[class*="next-button"]'];
-                    for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
-                    var v = document.querySelector('video,audio'); if(v) { v.currentTime += 10; return 'skipped'; }
-                    return 'unavailable';
+
+                    return 'normal_next';
                 })()""", null)
             }
             BackgroundPlayService.ACTION_PREVIOUS -> {
-                pinnedMusicTab?.evaluateJavascript("""(function(){
-                    var s = ['.ytp-prev-button', '.ytm-custom-control[aria-label*="Previous"]', '.ytm-custom-control[aria-label*="पिछला"]', 'button[aria-label*="Previous"]', 'button[title*="Previous"]', '[class*="prev-button"]'];
-                    for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
-                    var v = document.querySelector('video,audio'); if(v) { v.currentTime -= 10; return 'skipped'; }
-                    return 'unavailable';
-                })()""", null)
-            }
+                val tab = pinnedMusicTab
+                if (tab != null) {
+                    val js = if (intent.action == BackgroundPlayService.ACTION_NEXT) {
+                        """(function(){
+                            var s = ['.ytp-next-button', '.ytm-custom-control[aria-label*="Next"]', '.ytm-custom-control[aria-label*="अगला"]', 'button[aria-label*="Next"]', 'button[title*="Next"]', 'a.ytm-autonav-bar-link', '[class*="next-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime += 10; return 'skipped'; }
+                            return 'unavailable';
+                        })()"""
+                    } else {
+                        """(function(){
+                            var s = ['.ytp-prev-button', '.ytm-custom-control[aria-label*="Previous"]', '.ytm-custom-control[aria-label*="पिछला"]', 'button[aria-label*="Previous"]', 'button[title*="Previous"]', '[class*="prev-button"]'];
+                            for (var i=0; i<s.length; i++) { var b = document.querySelector(s[i]); if (b && !b.disabled) { b.click(); return 'clicked'; } }
+                            var v = document.querySelector('video,audio'); if(v) { v.currentTime -= 10; return 'skipped'; }
+                            return 'unavailable';
+                        })()"""
+                    }
                     tab.evaluateJavascript(js, null)
                 } else {
                     Toast.makeText(this, "Pin a music tab first", Toast.LENGTH_SHORT).show()
