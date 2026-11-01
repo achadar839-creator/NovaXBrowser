@@ -31,8 +31,28 @@ import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
+    private var lastThemeBitmap: android.graphics.Bitmap? = null
+    private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
+        val bitmap = when (bg) {
+            is android.graphics.drawable.BitmapDrawable -> bg.bitmap
+            else -> return
+        }
+        if (bitmap == lastThemeBitmap) return
+        lastThemeBitmap = bitmap
 
-
+        Thread {
+            try {
+                var r = 0L; var g = 0L; var b = 0L; var count = 0
+                val step = Math.max(1, bitmap.width / 20)
+                for (x in 0 until bitmap.width step step) {
+                    for (y in 0 until bitmap.height step step) {
+                        val pixel = bitmap.getPixel(x, y)
+                        r += android.graphics.Color.red(pixel)
+                        g += android.graphics.Color.green(pixel)
+                        b += android.graphics.Color.blue(pixel)
+                        count++
+                    }
+                }
                 if (count == 0) return@Thread
                 val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
 
@@ -456,7 +476,12 @@ private val fileUploadPicker = registerForActivityResult(
         })
         setContentView(R.layout.activity_main)
 
-
+        // DYNAMIC THEME WATCHER
+        findViewById<android.view.View>(R.id.browserRoot)?.let { root ->
+            root.viewTreeObserver.addOnGlobalLayoutListener {
+                applyDynamicTheme(root.background)
+            }
+        }
 
 
         // TOP BLACK BAR & BOTTOM WHITE BAR FIX
@@ -2213,55 +2238,8 @@ override fun onDestroy() {
 
 
 
-
-    private var lastThemeBitmap: android.graphics.Bitmap? = null
-    private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
-        val bitmap = when (bg) {
-            is android.graphics.drawable.BitmapDrawable -> bg.bitmap
-            else -> return
-        }
-        if (bitmap == lastThemeBitmap) return
-        lastThemeBitmap = bitmap
-
-        val activity = this
-        Thread {
-            try {
-                var r = 0L; var g = 0L; var b = 0L; var count = 0
-                val step = Math.max(1, bitmap.width / 20)
-                for (x in 0 until bitmap.width step step) {
-                    for (y in 0 until bitmap.height step step) {
-                        val pixel = bitmap.getPixel(x, y)
-                        r += android.graphics.Color.red(pixel)
-                        g += android.graphics.Color.green(pixel)
-                        b += android.graphics.Color.blue(pixel)
-                        count++
-                    }
-                }
-                if (count == 0) return@Thread
-                val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
-
-                val hsv = FloatArray(3)
-                android.graphics.Color.colorToHSV(avgColor, hsv)
-                hsv[1] = Math.max(0.5f, hsv[1])
-                hsv[2] = Math.max(0.8f, hsv[2])
-                val themeColor = android.graphics.Color.HSVToColor(hsv)
-                val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
-
-                activity.runOnUiThread {
-                    try {
-                        activity.findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
-                        activity.findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
-                    } catch (e: Exception) {}
-                }
-            } catch (e: Exception) {}
-        }.start()
-    }
-
-
 }
+
 
 fun makeViewDraggable(view: android.view.View) {
     var dX = 0f
@@ -2287,5 +2265,4 @@ fun makeViewDraggable(view: android.view.View) {
             else -> false
         }
     }
-
-
+}
