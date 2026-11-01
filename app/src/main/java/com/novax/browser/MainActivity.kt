@@ -426,6 +426,49 @@ private val fileUploadPicker = registerForActivityResult(
             }
         })
         setContentView(R.layout.activity_main)
+
+        // TOP BLACK BAR & BOTTOM WHITE BAR FIX
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            window.apply {
+                clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+                addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+                decorView.systemUiVisibility = (
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                )
+                // ऊपर की काली पट्टी और नीचे की सफेद पट्टी को गायब (Transparent) करना
+                statusBarColor = android.graphics.Color.TRANSPARENT
+                navigationBarColor = android.graphics.Color.TRANSPARENT
+            }
+        }
+
+        // टॉप बार को थोड़ा नीचे खिसकाना ताकि वह बैटरी/नेटवर्क आइकन के पीछे न छुपे
+        findViewById<android.view.View>(R.id.topBar)?.let { topBar ->
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(topBar) { view, insets ->
+                val statusHeight = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars()).top
+                view.setPadding(view.paddingLeft, statusHeight + 12, view.paddingRight, view.paddingBottom)
+                insets
+            }
+        }
+
+        // नीचे वाले सारे बटनों को नेविगेशन जेस्चर के ठीक ऊपर सेट करना ताकि वो आधे न दिखें
+        findViewById<android.view.View>(R.id.browserRoot)?.let { root ->
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+                val navHeight = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, navHeight)
+                insets
+            }
+        }
+
+
+        // DYNAMIC THEME WATCHER
+        findViewById<android.view.View>(R.id.browserRoot)?.let { root ->
+            root.viewTreeObserver.addOnGlobalLayoutListener {
+                applyDynamicTheme(root.background)
+            }
+        }
+
         
         findViewById<android.view.View?>(resources.getIdentifier("btnUiToggle", "id", packageName))?.let { makeViewDraggable(it) }
 
@@ -2081,27 +2124,15 @@ override fun onDestroy() {
         }
 
         findViewById<Button>(R.id.btnMiniClose).setOnClickListener {
-            val musicTab = pinnedMusicTab
-            if (musicTab != null) {
-                val index = tabs.indexOf(musicTab)
-                if (index >= 0) {
-                    tabs.removeAt(index)
-                    webContainer.removeView(musicTab)
-                    if (tabs.isEmpty()) {
-                            nativeHomeView?.visibility = android.view.View.GONE
-                        createNewTab("https://www.google.com")
-                    } else {
-                        if (currentTabIndex > index) currentTabIndex--
-                        else if (currentTabIndex >= tabs.size) currentTabIndex = tabs.lastIndex
-                        switchToTab(currentTabIndex)
-                    }
-                }
-                musicTab.stopLoading()
-                musicTab.destroy()
-                pinnedMusicTab = null
-            }
-            stopService(Intent(this, BackgroundPlayService::class.java))
-            updateUI()
+            // नोटिफिकेशन सर्विस बंद करें
+            val stopIntent = android.content.Intent(this@MainActivity, BackgroundPlayService::class.java).apply { action = BackgroundPlayService.ACTION_CLOSE }
+            startService(stopIntent)
+            
+            // टैब बचाए रखें, सिर्फ प्लेयर छुपाएं और वीडियो पॉज़ करें
+            val webView = findViewById<android.widget.FrameLayout>(R.id.webContainer)?.getChildAt(0) as? android.webkit.WebView
+            webView?.evaluateJavascript("var m = document.querySelectorAll('video, audio'); m.forEach(function(v) { v.pause(); });", null)
+            findViewById<android.view.View>(R.id.miniPlayerBar)?.visibility = android.view.View.GONE
+            findViewById<android.view.View>(R.id.progressBar)?.visibility = android.view.View.GONE
         }
 
         findViewById<Button>(R.id.btnWallpaper).setOnClickListener {
@@ -2182,4 +2213,53 @@ fun makeViewDraggable(view: android.view.View) {
             else -> false
         }
     }
+
+    private var lastThemeBitmap: android.graphics.Bitmap? = null
+    private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
+        val bitmap = when (bg) {
+            is android.graphics.drawable.BitmapDrawable -> bg.bitmap
+            else -> return
+        }
+        if (bitmap == lastThemeBitmap) return
+        lastThemeBitmap = bitmap
+
+        Thread {
+            try {
+                var r = 0L; var g = 0L; var b = 0L; var count = 0
+                val step = Math.max(1, bitmap.width / 20)
+                for (x in 0 until bitmap.width step step) {
+                    for (y in 0 until bitmap.height step step) {
+                        val pixel = bitmap.getPixel(x, y)
+                        r += android.graphics.Color.red(pixel)
+                        g += android.graphics.Color.green(pixel)
+                        b += android.graphics.Color.blue(pixel)
+                        count++
+                    }
+                }
+                if (count == 0) return@Thread
+                val avgColor = android.graphics.Color.rgb((r/count).toInt(), (g/count).toInt(), (b/count).toInt())
+                
+                val hsv = FloatArray(3)
+                android.graphics.Color.colorToHSV(avgColor, hsv)
+                hsv[1] = Math.max(0.5f, hsv[1])
+                hsv[2] = Math.max(0.8f, hsv[2])
+                val themeColor = android.graphics.Color.HSVToColor(hsv)
+                val hexColor = String.format("#%06X", (0xFFFFFF and themeColor))
+
+                runOnUiThread {
+                    try {
+                        findViewById<android.widget.TextView>(R.id.tvBrand)?.setTextColor(themeColor)
+                        findViewById<android.widget.Button>(R.id.btnBack)?.setTextColor(themeColor)
+                        findViewById<android.widget.Button>(R.id.btnForward)?.setTextColor(themeColor)
+                        findViewById<android.widget.Button>(R.id.btnRefresh)?.setTextColor(themeColor)
+                        findViewById<android.widget.Button>(R.id.btnTabs)?.setTextColor(themeColor)
+
+                        val js = "javascript:if(typeof setDynamicTheme === 'function') { setDynamicTheme('" + hexColor + "'); }"
+                        tabs.forEach { it.evaluateJavascript(js, null) }
+                    } catch (e: Exception) {}
+                }
+            } catch (e: Exception) {}
+        }.start()
+    }
+
 }
