@@ -2046,7 +2046,7 @@ override fun onDestroy() {
         }
         findViewById<Button>(R.id.btnHome).setOnClickListener {
         if (tabs.getOrNull(currentTabIndex) == pinnedMusicTab) {
-            createNewTab()
+            createNewTab("https://www.google.com")
         } else {
             openHomePage()
         }
