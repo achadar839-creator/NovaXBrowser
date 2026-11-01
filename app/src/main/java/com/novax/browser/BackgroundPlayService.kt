@@ -185,6 +185,31 @@ class BackgroundPlayService : Service() {
             customView.setInt(resources.getIdentifier("notifRoot", "id", packageName), "setBackgroundColor", android.graphics.Color.parseColor("#1A1A1A"))
         }
 
+        
+        // --- LIVE PROGRESS & TIME SYNC FOR NOTIFICATION ---
+        try {
+            val progressViewId = resources.getIdentifier("notifProgress", "id", packageName)
+            val timeCurrentId = resources.getIdentifier("notifTimeCurrent", "id", packageName)
+            val timeTotalId = resources.getIdentifier("notifTimeTotal", "id", packageName)
+
+            if (progressViewId != 0 && currentDuration > 0) {
+                val percent = ((currentPosition * 100) / currentDuration).toInt()
+                customView.setProgressBar(progressViewId, 100, percent.coerceIn(0, 100), false)
+            }
+            
+            if (timeCurrentId != 0) {
+                val curSec = (currentPosition / 1000)
+                val curTimeStr = String.format("%02d:%02d", curSec / 60, curSec % 60)
+                customView.setTextViewText(timeCurrentId, curTimeStr)
+            }
+
+            if (timeTotalId != 0 && currentDuration > 0) {
+                val totSec = (currentDuration / 1000)
+                val totTimeStr = String.format("%02d:%02d", totSec / 60, totSec % 60)
+                customView.setTextViewText(timeTotalId, totTimeStr)
+            }
+        } catch (_: Exception) {}
+
         customView.setOnClickPendingIntent(resources.getIdentifier("notifPlayPause", "id", packageName), actionPending(ACTION_PLAY_PAUSE, 2))
         customView.setOnClickPendingIntent(resources.getIdentifier("notifNext", "id", packageName), actionPending(nextAction, 3))
         customView.setOnClickPendingIntent(resources.getIdentifier("notifPrev", "id", packageName), actionPending(ACTION_PREVIOUS, 1))

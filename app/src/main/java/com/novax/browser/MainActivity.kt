@@ -30,6 +30,14 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
+    // Pin Tab Save Logic (Permanent Storage)
+    private fun savePinnedTabs(url: String, title: String) {
+        val prefs = getSharedPreferences("novax_pinned_tabs", MODE_PRIVATE)
+        val set = prefs.getStringSet("pinned_list", mutableSetOf()) ?: mutableSetOf()
+        set.add("$url|$title")
+        prefs.edit().putStringSet("pinned_list", set).apply()
+    }
+
 
     private var lastThemeBitmap: android.graphics.Bitmap? = null
     private fun applyDynamicTheme(bg: android.graphics.drawable.Drawable?) {
