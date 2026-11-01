@@ -2075,7 +2075,7 @@ override fun onDestroy() {
 
         findViewById<Button>(R.id.btnMiniNext).setOnClickListener {
             pinnedMusicTab?.evaluateJavascript(
-                "(function(){var b=document.querySelector(\".ytp-next-button, [aria-label=\\"Next\\" i], [title=\\"Next\\" i]\");if(b){b.click();}else{var v=document.querySelector(\"video, audio\");if(v&&v.duration){v.currentTime=v.duration;}}return \"ok\";})()",
+                """(function(){var b=document.querySelector(".ytp-next-button, [aria-label='Next' i], [title='Next' i]");if(b){b.click();}else{var v=document.querySelector("video, audio");if(v&&v.duration){v.currentTime=v.duration;}}return "ok";})()""",
                 null
             )
         }
