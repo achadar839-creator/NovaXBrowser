@@ -1440,6 +1440,28 @@ private val fileUploadPicker = registerForActivityResult(
     private var nativeHomeView: android.widget.LinearLayout? = null
     private fun openHomePage() {
         val tab = tabs.getOrNull(currentTabIndex) ?: return
+        val currentUrl = tab.url ?: ""
+        
+        // --- PINNED TAB PROTECTION (पिन किए टैब को उड़ने से बचाना) ---
+        val prefs = getSharedPreferences("novax_pinned_tabs", MODE_PRIVATE)
+        val set = prefs.getStringSet("pinned_list", null) ?: mutableSetOf()
+        var isPinned = false
+        for (item in set) {
+            val pinnedUrl = item.substringBefore("|")
+            if (currentUrl.isNotEmpty() && (currentUrl == pinnedUrl || currentUrl.startsWith(pinnedUrl))) {
+                isPinned = true
+                break
+            }
+        }
+        
+        if (isPinned && !currentUrl.contains("home.html")) {
+            // अगर यह पिन किया हुआ टैब है, तो इसे बैकग्राउंड में सुरक्षित छोड़ दो और होम पेज नए टैब में खोलो!
+            createNewTab("file:///android_asset/home.html")
+            etUrl.setText("")
+            return
+        }
+        // -------------------------------------------------------------
+        
         tab.visibility = android.view.View.VISIBLE
         nativeHomeView?.visibility = android.view.View.GONE
         tab.loadUrl("file:///android_asset/home.html")
