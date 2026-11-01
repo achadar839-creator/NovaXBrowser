@@ -345,8 +345,15 @@ private val fileUploadPicker = registerForActivityResult(
                     switchToTab(index)
                     pinned.requestFocus()
                 } else {
-                    Toast.makeText(this, "Pinned media tab is no longer available", Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this, "Pinned media tab is no longer available", android.widget.Toast.LENGTH_SHORT).show()
                 }
+            }
+            BackgroundPlayService.ACTION_PLAY_PAUSE -> {
+                pinnedMusicTab?.evaluateJavascript("""(function(){
+                    var v = document.querySelector('video,audio');
+                    if(v) { if(v.paused) v.play(); else v.pause(); return v.paused ? 'paused' : 'playing'; }
+                    return 'no_media';
+                })()""", null)
             }
             "com.novax.browser.SKIP_AD" -> {
                 pinnedMusicTab?.evaluateJavascript("""(function(){
@@ -2037,7 +2044,13 @@ override fun onDestroy() {
                 searchWithSelectedEngine(u)
             }
         }
-        findViewById<Button>(R.id.btnHome).setOnClickListener { openHomePage() }
+        findViewById<Button>(R.id.btnHome).setOnClickListener {
+        if (tabs.getOrNull(currentTabIndex) == pinnedMusicTab) {
+            createNewTab()
+        } else {
+            openHomePage()
+        }
+    }
 
         btnTabs.setOnClickListener { showTabsOverview() }
 
