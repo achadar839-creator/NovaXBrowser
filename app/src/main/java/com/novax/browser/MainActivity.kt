@@ -934,7 +934,8 @@ private val fileUploadPicker = registerForActivityResult(
 
                 if (!url.isNullOrBlank() &&
                     (url.startsWith("https://") || url.startsWith("http://")) &&
-                    !url.startsWith("https://novax.home/")) {
+                    !url.startsWith("https://novax.home/") &&
+                    !incognitoTabs.contains(view)) {
                     val prefs = getSharedPreferences("novax_preferences", MODE_PRIVATE)
                     val history = prefs.getStringSet("browser_history", emptySet())
                         ?.toMutableSet() ?: mutableSetOf()
