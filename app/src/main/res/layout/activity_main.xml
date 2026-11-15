@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:ads="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#020811">
+    android:background="#000000"> <!-- PURE AMOLED BLACK -->
 
     <LinearLayout
         android:id="@+id/browserRoot"
@@ -11,239 +12,114 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- TOP BAR -->
-        <LinearLayout
-            android:id="@+id/topBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#071729"
-            android:padding="12dp"
-            android:gravity="center_vertical"
-            android:elevation="8dp">
-
-            <TextView
-                android:id="@+id/tvBrand"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="✧ INFER BROWSER"
-                android:textColor="#43eaff"
-                android:textStyle="bold"
-                android:letterSpacing="0.05"
-                android:textSize="15sp" />
-
-            <Button
-                android:id="@+id/btnAdminPanel"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="⚙ Admin"
-                android:textSize="10sp"
-                android:textColor="#eaf8ff"
-                android:backgroundTint="#0F243A"
-                android:layout_marginEnd="6dp"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnLogin"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="◎ Account"
-                android:textSize="10sp"
-                android:textColor="#eaf8ff"
-                android:backgroundTint="#0F243A"
-                android:layout_marginEnd="6dp" />
-
-            <Button
-                android:id="@+id/btnVipAd"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="▶ VIP Ad"
-                android:textSize="10sp"
-                android:textColor="#eaf8ff"
-                android:backgroundTint="#0F243A" />
-        </LinearLayout>
-
-        <!-- MINI PLAYER -->
-        <LinearLayout
-            android:id="@+id/miniPlayerBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#0C1B2E"
-            android:padding="8dp"
-            android:layout_margin="8dp"
-            android:gravity="center_vertical"
-            android:visibility="gone">
-            <TextView
-                android:id="@+id/tvMiniPlayerTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🎵 Playing..."
-                android:textColor="#38f5a3"
-                android:textSize="12sp"
-                android:singleLine="true"
-                android:ellipsize="marquee"
-                android:textStyle="bold" />
-            <Button android:id="@+id/btnMiniPrevious" android:layout_width="36dp" android:layout_height="32dp" android:text="⏪" android:backgroundTint="#142e48" android:textColor="#eaf8ff" />
-            <Button android:id="@+id/btnMiniNext" android:layout_width="36dp" android:layout_height="32dp" android:layout_marginStart="2dp" android:text="⏩" android:backgroundTint="#142e48" android:textColor="#eaf8ff" />
-            <Button android:id="@+id/btnMiniPlayPause" android:layout_width="60dp" android:layout_height="32dp" android:text="⏯️ Play" android:textSize="10sp" android:backgroundTint="#142e48" android:textColor="#eaf8ff" />
-            <Button android:id="@+id/btnMiniClose" android:layout_width="36dp" android:layout_height="32dp" android:layout_marginStart="4dp" android:text="✖" android:textSize="10sp" android:backgroundTint="#DA3633" android:textColor="#FFFFFF" />
-        </LinearLayout>
+        <!-- 🚨 TopBar is GONE. Hidden in Admin System. -->
 
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
+            android:layout_height="2dp"
+            android:progressTint="#39FF14"
             android:visibility="gone" />
 
-        <!-- WEB CONTAINER -->
+        <!-- WEB CONTAINER (Takes all space) -->
         <FrameLayout
             android:id="@+id/webContainer"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- AD CONTAINER -->
-        <LinearLayout
-            android:id="@+id/adCardContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            android:orientation="vertical"
-            android:background="#0C1B2E"
-            android:padding="8dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical" android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ADVERTISEMENT" android:textColor="#8199ad" android:textSize="10sp" android:letterSpacing="0.12" />
-                <Button android:id="@+id/btnAdCardToggle" android:layout_width="36dp" android:layout_height="28dp" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp" android:text="−" android:textSize="18sp" android:textColor="#eaf8ff" android:backgroundTint="#142e48" />
-            </LinearLayout>
-            <com.google.android.gms.ads.AdView
-                android:id="@+id/adView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                ads:adSize="BANNER"
-                ads:adUnitId="ca-app-pub-4314530224755913/3636674783" />
-        </LinearLayout>
+        <!-- 🚨 Ad Container is GONE -->
+        <!-- 🚨 Horizontal Tools Menu is GONE -->
 
-        <!-- HORIZONTAL TOOLS MENU -->
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#071729"
-            android:scrollbars="none">
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="8dp">
-                <Button android:id="@+id/btnWallpaper" android:layout_width="wrap_content" android:layout_height="36dp" android:text="🎨 Theme" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnBookmarks" android:layout_width="wrap_content" android:layout_height="36dp" android:text="🔖 Bookmarks" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnHistory" android:layout_width="wrap_content" android:layout_height="36dp" android:text="◷ History" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnQuickLinks" android:layout_width="wrap_content" android:layout_height="36dp" android:text="🌐 Links" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnClearData" android:layout_width="wrap_content" android:layout_height="36dp" android:text="🗑 Clear" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnDownloads" android:layout_width="wrap_content" android:layout_height="36dp" android:text="⬇ Downloads" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnSettings" android:layout_width="wrap_content" android:layout_height="36dp" android:text="⚙ Settings" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnIncognito" android:layout_width="wrap_content" android:layout_height="36dp" android:text="🕵 Private" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#0F243A" android:textColor="#eaf8ff" />
-                <Button android:id="@+id/btnPinAudio" android:layout_width="wrap_content" android:layout_height="36dp" android:text="📌 Pin Web" android:textSize="11sp" android:layout_marginEnd="6dp" android:backgroundTint="#16baff" android:textColor="#FFFFFF" />
-                
-                <!-- Hidden/Extra Tools -->
-                <Button android:id="@+id/btnDesktopMode" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Desktop" android:visibility="gone" />
-                <Button android:id="@+id/btnSharePage" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Share" android:visibility="gone" />
-                <Button android:id="@+id/btnQrScanner" android:layout_width="wrap_content" android:layout_height="36dp" android:text="QR" android:visibility="gone" />
-                <Button android:id="@+id/btnRestoreSession" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Restore" android:visibility="gone" />
-                <Button android:id="@+id/btnFindPage" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Find" android:visibility="gone" />
-                <Button android:id="@+id/btnReadingMode" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Read" android:visibility="gone" />
-                <Button android:id="@+id/btnSearchEngine" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Engine" android:visibility="gone" />
-            </LinearLayout>
-        </HorizontalScrollView>
-
-        <!-- BOTTOM NAVIGATION & SEARCH -->
+        <!-- SLEEK BOTTOM SEARCH BAR (Arc Style) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#041322"
-            android:padding="10dp"
+            android:background="#000000"
+            android:padding="8dp"
             android:gravity="center_vertical"
             android:elevation="12dp">
-            
-            <Button
-                android:id="@+id/btnBack"
-                android:layout_width="38dp"
-                android:layout_height="40dp"
-                android:text="◁"
-                android:backgroundTint="#0F243A"
-                android:textColor="#43eaff" />
-            
-            <Button
-                android:id="@+id/btnForward"
-                android:layout_width="38dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:text="▷"
-                android:backgroundTint="#0F243A"
-                android:textColor="#43eaff" />
-                
-            <Button
-                android:id="@+id/btnHome"
-                android:layout_width="38dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:text="⌂"
-                android:backgroundTint="#0F243A"
-                android:textColor="#43eaff" />
+
+            <!-- 5-Tap Privacy Shield Easter Egg -->
+            <ImageView
+                android:id="@+id/privacyShield"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_secure"
+                android:tint="#39FF14"
+                android:padding="4dp" />
 
             <EditText
                 android:id="@+id/etUrl"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:background="#071626"
-                android:hint="Search URL..."
-                android:textColorHint="#8199ad"
-                android:textColor="#eaf8ff"
-                android:paddingStart="12dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:background="#0A0A0A"
+                android:hint="Type //admin for System"
+                android:textColorHint="#444444"
+                android:textColor="#39FF14"
+                android:paddingStart="16dp"
                 android:singleLine="true"
                 android:inputType="textUri" />
 
             <Button
-                android:id="@+id/btnRefresh"
-                android:layout_width="38dp"
-                android:layout_height="40dp"
-                android:text="⟳"
-                android:layout_marginEnd="4dp"
-                android:backgroundTint="#0F243A"
-                android:textColor="#43eaff" />
-
-            <Button
                 android:id="@+id/btnGo"
-                android:layout_width="45dp"
+                android:layout_width="50dp"
                 android:layout_height="40dp"
                 android:text="GO"
-                android:backgroundTint="#16baff"
-                android:textColor="#FFFFFF" />
-
-            <Button
-                android:id="@+id/btnTabs"
-                android:layout_width="45dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:text="▢"
                 android:textStyle="bold"
-                android:backgroundTint="#0F243A"
-                android:textColor="#38f5a3" />
+                android:backgroundTint="#000000"
+                android:textColor="#39FF14" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- FLOATING TOGGLE MENU BUTTON -->
-    <Button
-        android:id="@+id/btnUiToggle"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:text="☰"
-        android:textSize="18sp"
-        android:layout_gravity="end|bottom"
-        android:layout_marginBottom="85dp"
-        android:layout_marginEnd="15dp"
-        android:elevation="16dp"
-        android:backgroundTint="#16baff"
-        android:textColor="#FFFFFF" />
+    <!-- SUPER ACTION BUTTON (Central FAB) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/superActionButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="65dp"
+        android:src="@android:drawable/ic_dialog_dialer"
+        android:backgroundTint="#000000"
+        app:tint="#39FF14"
+        app:borderWidth="1dp"
+        app:rippleColor="#39FF14"
+        android:elevation="16dp" />
+
+    <!-- 🚨 All hidden original Buttons for MainActivity reference. Do NOT make visible. -->
+    <LinearLayout android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
+        <LinearLayout android:id="@+id/topBar" android:layout_width="0dp" android:layout_height="0dp" />
+        <TextView android:id="@+id/tvBrand" android:layout_width="0dp" android:layout_height="0dp" />
+        <Button android:id="@+id/btnAdminPanel" />
+        <Button android:id="@+id/btnLogin" />
+        <Button android:id="@+id/btnVipAd" />
+        <LinearLayout android:id="@+id/adCardContainer" android:layout_width="0dp" android:layout_height="0dp" />
+        <Button android:id="@+id/btnAdCardToggle" />
+        <com.google.android.gms.ads.AdView android:id="@+id/adView" />
+        <Button android:id="@+id/btnWallpaper" />
+        <Button android:id="@+id/btnBookmarks" />
+        <Button android:id="@+id/btnHistory" />
+        <Button android:id="@+id/btnQuickLinks" />
+        <Button android:id="@+id/btnClearData" />
+        <Button android:id="@+id/btnDownloads" />
+        <Button android:id="@+id/btnSettings" />
+        <Button android:id="@+id/btnIncognito" />
+        <Button android:id="@+id/btnPinAudio" />
+        <Button android:id="@+id/btnBack" />
+        <Button android:id="@+id/btnForward" />
+        <Button android:id="@+id/btnHome" />
+        <Button android:id="@+id/btnRefresh" />
+        <Button android:id="@+id/btnTabs" />
+        <Button android:id="@+id/btnUiToggle" />
+        <LinearLayout android:id="@+id/miniPlayerBar" />
+        <Button android:id="@+id/btnMiniPrevious" />
+        <Button android:id="@+id/btnMiniNext" />
+        <Button android:id="@+id/btnMiniPlayPause" />
+        <Button android:id="@+id/btnMiniClose" />
+    </LinearLayout>
+
 </FrameLayout>

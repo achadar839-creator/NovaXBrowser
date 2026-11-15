@@ -276,6 +276,9 @@ private val fileUploadPicker = registerForActivityResult(
             return
         }
 
+        android.widget.Toast.makeText(this, "Redirecting to Universal Media Extractor...", android.widget.Toast.LENGTH_LONG).show()
+        createNewTab("https://universal-media-extractor-8pux.onrender.com")
+        return
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
@@ -536,6 +539,43 @@ private val fileUploadPicker = registerForActivityResult(
         toggleBrowserBars()
         applySavedTheme()
         restoreSavedWallpaper()
+        setupPrivacyEasterEgg()
+
+        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.superActionButton)?.setOnClickListener {
+            val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+            val menuView = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(60, 60, 60, 60)
+                setBackgroundColor(android.graphics.Color.parseColor("#080B09"))
+                
+                addView(android.widget.TextView(this@MainActivity).apply {
+                    text = "INFER SYSTEM"
+                    setTextColor(android.graphics.Color.parseColor("#39FF14"))
+                    textSize = 12f
+                    setPadding(0, 0, 0, 40)
+                })
+                
+                val options = listOf(
+                    "◷   History" to { showHistory(); bottomSheet.dismiss() },
+                    "☆   Bookmarks" to { showBookmarks(); bottomSheet.dismiss() },
+                    "↓   Downloads" to { openDownloadsFolder(); bottomSheet.dismiss() },
+                    "◐   Theme" to { showWallpaperMenu(); bottomSheet.dismiss() }
+                )
+                
+                options.forEach { (title, action) ->
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        text = title
+                        setTextColor(android.graphics.Color.WHITE)
+                        textSize = 16f
+                        setPadding(0, 30, 0, 30)
+                        setOnClickListener { action() }
+                    })
+                }
+            }
+            bottomSheet.setContentView(menuView)
+            bottomSheet.show()
+        }
+
         updateUI()
     }
 
@@ -835,6 +875,15 @@ private val fileUploadPicker = registerForActivityResult(
 
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val reqStr = request?.url?.toString() ?: ""
+                if (reqStr.startsWith("infer://unlock-vip")) {
+                    val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L
+                    premiumPrefs.edit().putLong("premium_until", premiumUntil).putBoolean("premium_unlocked", true).apply()
+                    android.widget.Toast.makeText(this@MainActivity, "👑 Premium Unlocked for 2 Hours!", android.widget.Toast.LENGTH_LONG).show()
+                    updateUI()
+                    if (view is KeepAliveWebView) closeTab(view)
+                    return true
+                }
                     // novax_external_scheme_handler
                     val target = request?.url?.toString().orEmpty()
                     val scheme = request?.url?.scheme?.lowercase().orEmpty()
@@ -2035,7 +2084,8 @@ override fun onDestroy() {
         findViewById<Button>(R.id.btnGo).setOnClickListener {
             nativeHomeView?.visibility = android.view.View.GONE
             tabs.getOrNull(currentTabIndex)?.visibility = android.view.View.VISIBLE
-            val u = etUrl.text.toString()
+            val u = etUrl.text.toString().trim()
+            if (u == "//admin" || u == "cmd:login") { showAdminLoginDialog(); etUrl.setText(""); return@setOnClickListener }
             if (u.startsWith("https://") || u.startsWith("http://")) {
                 tabs.getOrNull(currentTabIndex)?.loadUrl(u)
             } else if (u.contains(".") && !u.contains(" ")) {
@@ -2146,14 +2196,7 @@ override fun onDestroy() {
             showAdminCustomization()
         }
 
-        btnLogin.setOnClickListener {
-            val input = EditText(this)
-            AlertDialog.Builder(this).setTitle("👤 Login").setView(input).setMessage("Enter Admin Email:")
-                .setPositiveButton("Login") { _, _ ->
-                    getSharedPreferences("prefs", 0).edit().putString("email", input.text.toString()).apply()
-                    updateUI()
-                }.show()
-        }
+        btnLogin.setOnClickListener { showAdminLoginDialog() }
 
         btnVipAd.setOnClickListener {
             if (isAdmin()) {
@@ -2188,6 +2231,50 @@ override fun onDestroy() {
     }
 
 
+
+
+    // --- STEALTH UI: ADMIN SYSTEM ---
+    private var shieldTapCount = 0
+    private var firstTapTime: Long = 0
+    private val TAP_WINDOW: Long = 2500
+
+    private fun setupPrivacyEasterEgg() {
+        val privacyShield = findViewById<android.widget.ImageView>(R.id.privacyShield)
+        privacyShield?.setOnClickListener {
+            val currentTime = android.os.SystemClock.elapsedRealtime()
+            if (currentTime - firstTapTime > TAP_WINDOW) shieldTapCount = 0
+            if (shieldTapCount == 0) firstTapTime = currentTime
+            shieldTapCount++
+            if (shieldTapCount >= 5) {
+                shieldTapCount = 0; firstTapTime = 0
+                showAdminLoginDialog()
+            }
+        }
+    }
+
+    private fun showAdminLoginDialog() {
+        val passwordInput = android.widget.EditText(this).apply {
+            setSingleLine(true)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            hint = "Enter password"
+            setTextColor(android.graphics.Color.WHITE)
+            setHintTextColor(android.graphics.Color.GRAY)
+        }
+        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("INFER // ADMIN").setMessage("Restricted access").setView(passwordInput)
+            .setPositiveButton("AUTHENTICATE", null).setNegativeButton("CANCEL") { d, _ -> d.dismiss() }.create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (passwordInput.text.toString().trim() == "mutant") {
+                    dialog.dismiss()
+                    getSharedPreferences("prefs", android.content.Context.MODE_PRIVATE).edit().putString("email", "mutantsuperheros@gmail.com").apply()
+                    updateUI()
+                    android.widget.Toast.makeText(this, "Welcome Back, Boss.", android.widget.Toast.LENGTH_SHORT).show()
+                } else passwordInput.error = "Access denied"
+            }
+        }
+        dialog.show()
+    }
 
 }
 
