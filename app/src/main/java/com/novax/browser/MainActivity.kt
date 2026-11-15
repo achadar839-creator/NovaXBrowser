@@ -272,46 +272,63 @@ private val fileUploadPicker = registerForActivityResult(
 
     private fun showRewardedUnlock() {
         if (isPremiumActive()) {
-            Toast.makeText(this, "👑 Premium is already active", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Premium is already active", Toast.LENGTH_SHORT).show()
             return
         }
 
-        android.widget.Toast.makeText(this, "Redirecting to Universal Media Extractor...", android.widget.Toast.LENGTH_LONG).show()
-        createNewTab("https://universal-media-extractor-8pux.onrender.com")
-        return
         val ad = rewardedAd
         if (ad == null) {
             loadRewardedAd()
-            val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L; premiumPrefs.edit().putLong("premium_until", premiumUntil).putBoolean("premium_unlocked", true).putInt("completed_rewards", 0).apply(); updateUI(); Toast.makeText(this, "👑 Ads currently unavailable. Free 2-hour Premium granted!", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "Ad is not ready. Please try again shortly.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
 
         rewardedAd = null
         var earned = false
+
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 if (earned) {
                     val count = premiumPrefs.getInt("completed_rewards", 0) + 1
+
                     if (count >= 2) {
-                        val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L
+                        val premiumUntil =
+                            System.currentTimeMillis() + 2L * 60L * 60L * 1000L
+
                         premiumPrefs.edit()
                             .putLong("premium_until", premiumUntil)
                             .putBoolean("premium_unlocked", true)
                             .putInt("completed_rewards", 0)
                             .apply()
-                        Toast.makeText(this@MainActivity,
-                            "👑 Premium unlocked for 2 hours!", Toast.LENGTH_LONG).show()
-                        updateUI()
-                        // Keep the AdMob banner attached; do not remove it on Premium unlock.
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Premium unlocked for 2 hours!",
+                            Toast.LENGTH_LONG
+                        ).show()
                     } else {
-                        premiumPrefs.edit().putInt("completed_rewards", count).apply()
-                        Toast.makeText(this@MainActivity,
-                            "1/2 ads completed. Watch one more!", Toast.LENGTH_LONG).show()
+                        premiumPrefs.edit()
+                            .putInt("completed_rewards", count)
+                            .apply()
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "1/2 ads completed. Watch one more!",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 } else {
-                    Toast.makeText(this@MainActivity,
-                        "Reward not earned. Please watch the ad fully.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Reward not earned.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
+
                 updateUI()
                 loadRewardedAd()
             }
@@ -319,8 +336,11 @@ private val fileUploadPicker = registerForActivityResult(
             override fun onAdFailedToShowFullScreenContent(error: AdError) {
                 rewardedAd = null
                 loadRewardedAd()
-                Toast.makeText(this@MainActivity,
-                    "Ad couldn't be shown. Please try again.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    "Ad could not be shown. Please try again.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -328,7 +348,6 @@ private val fileUploadPicker = registerForActivityResult(
             earned = true
         }
     }
-
 
     private val adultDomains = listOf("porn.com", "pornhub.com", "xvideos.com", "xnxx.com")
     private val defaultVipUrl = "https://www.youtube.com/@mrphengmaxx?sub_confirmation=1"
@@ -580,8 +599,8 @@ private val fileUploadPicker = registerForActivityResult(
     }
 
     private fun isAdmin(): Boolean {
-        val email = getSharedPreferences("prefs", Context.MODE_PRIVATE).getString("email", "") ?: ""
-        return email.equals("mutantsuperheros@gmail.com", true) || email.equals("achadar839@gmail.com", true)
+        // Admin access remains disabled until secure authentication is implemented.
+        return false
     }
 
     private var browserBarsVisible = false
@@ -877,11 +896,11 @@ private val fileUploadPicker = registerForActivityResult(
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val reqStr = request?.url?.toString() ?: ""
                 if (reqStr.startsWith("infer://unlock-vip")) {
-                    val premiumUntil = System.currentTimeMillis() + 2L * 60L * 60L * 1000L
-                    premiumPrefs.edit().putLong("premium_until", premiumUntil).putBoolean("premium_unlocked", true).apply()
-                    android.widget.Toast.makeText(this@MainActivity, "👑 Premium Unlocked for 2 Hours!", android.widget.Toast.LENGTH_LONG).show()
-                    updateUI()
-                    if (view is KeepAliveWebView) closeTab(view)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Use the official Premium unlock flow.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return true
                 }
                     // novax_external_scheme_handler
@@ -2253,27 +2272,11 @@ override fun onDestroy() {
     }
 
     private fun showAdminLoginDialog() {
-        val passwordInput = android.widget.EditText(this).apply {
-            setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-            hint = "Enter password"
-            setTextColor(android.graphics.Color.WHITE)
-            setHintTextColor(android.graphics.Color.GRAY)
-        }
-        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("INFER // ADMIN").setMessage("Restricted access").setView(passwordInput)
-            .setPositiveButton("AUTHENTICATE", null).setNegativeButton("CANCEL") { d, _ -> d.dismiss() }.create()
-        dialog.setOnShowListener {
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (passwordInput.text.toString().trim() == "mutant") {
-                    dialog.dismiss()
-                    getSharedPreferences("prefs", android.content.Context.MODE_PRIVATE).edit().putString("email", "mutantsuperheros@gmail.com").apply()
-                    updateUI()
-                    android.widget.Toast.makeText(this, "Welcome Back, Boss.", android.widget.Toast.LENGTH_SHORT).show()
-                } else passwordInput.error = "Access denied"
-            }
-        }
-        dialog.show()
+        Toast.makeText(
+            this,
+            "Admin login is temporarily disabled for security.",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
 }
